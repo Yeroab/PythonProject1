@@ -92,7 +92,7 @@ st.markdown("""
 @st.cache_resource  # Highly recommended for Streamlit performance
 def load_model_assets():
     try:
-        model_path = '/Users/yeroabketemasamuel/Desktop/MODEL/gbm_diagnostic_model-1.pkl'
+        model_path = 'gbm_diagnostic_model-1.pkl'
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
 
