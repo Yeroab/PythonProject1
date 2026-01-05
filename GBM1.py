@@ -149,16 +149,20 @@ st.sidebar.markdown("---")
 
 with st.sidebar:
     st.header("Data Tools")
-    assert isinstance(feature_list, object)
     if feature_list:
-        template_df = pd.DataFrame(0.0, index=[0], columns=feature_list)
+        # Sort feature_list so RELEVANT_PANEL comes first
+        sorted_features = RELEVANT_PANEL + [f for f in feature_list if f not in RELEVANT_PANEL]
+        
+        # Create template with sorted columns
+        template_df = pd.DataFrame(0.0, index=[0], columns=sorted_features)
+        
         csv_data = template_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="Download 843-Feature Template",
             data=csv_data,
             file_name="biomarker_template_843.csv",
             mime="text/csv",
-            help="Download this file, fill in your markers, and leave the rest as 0."
+            help="The 81 relevant markers are at the start. Fill those, leave others as 0."
         )
     st.info("Tip: You only need to fill in the available relevant markers. The model will handle the rest")
 
@@ -190,12 +194,28 @@ if page == "Main Analysis":
 
         st.progress(prob)
 
+# --- Update this specific block around line 193 ---
         with st.expander(" View Detected Biomarker Values"):
             found_data = []
+            
+            # 1. Create a lookup: {lowercase_name: official_name_in_model}
+            # This bridges the gap between your list and the 843 model features
+            feature_lookup = {f.lower().strip(): f for f in feature_list}
+            
             for marker in RELEVANT_PANEL:
-                val = processed_df[marker].iloc[0]
-                if val != 0:
-                    found_data.append({"Marker": marker, "Value": val})
+                marker_clean = marker.lower().strip()
+                
+                # 2. Match the panel name to the actual model feature name
+                if marker_clean in feature_lookup:
+                    official_name = feature_lookup[marker_clean]
+                    
+                    # 3. Access the value from the aligned data safely
+                    val = processed_df[official_name].iloc[0]
+                    
+                    if val != 0:
+                        found_data.append({"Marker": official_name, "Value": val})
+            
+            # 4. Display the results
             if found_data:
                 st.table(pd.DataFrame(found_data))
             else:
