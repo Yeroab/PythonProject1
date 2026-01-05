@@ -89,16 +89,30 @@ st.markdown("""
 
 
 # 1. First, define the function
-@st.cache_resource  # Highly recommended for Streamlit performance
 def load_model_assets():
     try:
         model_path = 'gbm_diagnostic_model-1.pkl'
         with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+            loaded_object = pickle.load(f)
 
-        # This extracts the names from your XGBoost model
-        feature_list = model.get_booster().feature_names
+        # CASE 1: The object is a dictionary (common in some pipelines)
+        if isinstance(loaded_object, dict):
+            st.write("Debug: Loaded object is a dictionary. Keys found:", loaded_object.keys())
+            # Usually the actual model is under a key like 'model' or 'booster'
+            # If your dictionary has a 'model' key, use that:
+            model = loaded_object.get('model', loaded_object)
+        else:
+            model = loaded_object
+
+        # CASE 2: Getting the feature names
+        # If it's a dictionary, we might need to look at the keys directly
+        if isinstance(model, dict):
+            feature_list = list(model.keys()) # Or another specific key
+        else:
+            feature_list = model.get_booster().feature_names
+
         return model, feature_list
+
     except Exception as e:
         st.error(f"Error loading model assets: {e}")
         return None, None
