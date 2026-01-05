@@ -23,69 +23,8 @@ def align_data_to_model(user_df, master_feature_list):
 
 
 # --- 2. CONFIGURATION & ASSETS ---
-st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
-# Custom CSS for Light Theme, Grey Sidebar, Dark Grey Buttons, and Black Text
-# Custom CSS for Light Grey Theme Elements and Dark Grey Buttons
-st.markdown("""
-    <style>
-    /* 1. Main Background (White) */
-    .stApp { 
-        background-color: #FFFFFF !important; 
-    }
-
-    /* 2. Header Background (Light Grey) */
-    header[data-testid="stHeader"] {
-        background-color: #F0F2F6 !important;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    /* 3. Sidebar Background (Light Grey) */
-    [data-testid="stSidebar"] {
-        background-color: #F0F2F6 !important;
-        border-right: 1px solid #e0e0e0;
-    }
-
-   /* 4. File Uploader Area: Square and Light Grey */
-    [data-testid="stFileUploadDropzone"] {
-        background-color: #F0F2F6 !important;
-        border: 2px solid #A0A0A0 !important;
-        border-radius: 0px !important;
-        color: #000000 !important;
-    }
-
-    /* 5. Universal Black Text */
-    html, body, [class*="css"], .stMarkdown, p, span, label, 
-    h1, h2, h3, h4, h5, h6, table, th, td {
-        color: #000000 !important;
-    }
-
-    /* 6. DARK GREY BUTTONS WITH BLACK TEXT */
-    /* Targeting Standard, Download, and 'Browse files' buttons */
-    button, 
-    div.stButton > button, 
-    div.stDownloadButton > button, 
-    [data-testid="stFileUploadDropzone"] button {
-        background-color: #A0A0A0 !important; 
-        color: #000000 !important;           
-        border: 1px solid #707070 !important;
-        font-weight: bold !important;
-    }
-
-    /* Force button text/labels to be black */
-    button div p, button span, .stButton p {
-        color: #000000 !important;
-    }
-
-    /* 7. Metrics and Tables */
-    [data-testid="stMetricValue"] {
-        color: #000000 !important;
-    }
-    [data-testid="stTable"] td, [data-testid="stTable"] th {
-        color: #000000 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+   
 RELEVANT_PANEL = [
     'BLM_rna', 'FGG_prot', 'PRKCB_prot', 'SPHKAP_prot',
     'D-glucose_met', 'hypotaurine_met', 'creatinine_met', 'citricacid_met',
