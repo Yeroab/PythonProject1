@@ -107,20 +107,27 @@ st.markdown("""
 
 
 # 1. First, define the function
+@st.cache_resource
 def load_model_assets():
     try:
         model_path = 'gbm_diagnostic_model-1.pkl'
         with open(model_path, 'rb') as f:
             loaded_object = pickle.load(f)
 
-        # CASE 1: The object is a dictionary (common in some pipelines)
         if isinstance(loaded_object, dict):
-            st.write("Debug: Loaded object is a dictionary. Keys found:", loaded_object.keys())
-            # Usually the actual model is under a key like 'model' or 'booster'
-            # If your dictionary has a 'model' key, use that:
-            model = loaded_object.get('model', loaded_object)
+            # Directly extract using the keys discovered in debug
+            model = loaded_object['model']
+            feature_list = loaded_object['features']
         else:
             model = loaded_object
+            feature_list = model.get_booster().feature_names
+
+        return model, feature_list
+
+    except Exception as e:
+        # We keep this error message just in case the file goes missing
+        st.error(f"Error loading model assets: {e}")
+        return None, None
 
         # CASE 2: Getting the feature names
         # If it's a dictionary, we might need to look at the keys directly
