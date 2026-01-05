@@ -23,44 +23,91 @@ def align_data_to_model(user_df, master_feature_list):
 
 
 # --- 2. CONFIGURATION & ASSETS ---
+st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
-   
-RELEVANT_PANEL = [
-    'BLM_rna', 'FGG_prot', 'PRKCB_prot', 'SPHKAP_prot',
-    'D-glucose_met', 'hypotaurine_met', 'creatinine_met', 'citricacid_met',
-    'MAX_rna', 'NLK_rna', 'TRIQK_prot', 'PYGL_prot', 'xylitol_met',
-    'GFAP_prot', 'S100B_rna', 'MBP_rna', 'PLP1_rna', 'OLIG2_rna',
-    'SOX2_rna', 'EGFR_prot', 'PTENP1_rna', 'TP53_rna', 'IDH1_rna',
-    'VIM_prot', 'FN1_rna', 'CD44_rna', 'STAT3_rna', 'VEGFA_prot',
-    'RB1_rna', 'NF1_rna', 'PIK3CA_rna', 'CDK4_rna', 'MDM2_rna',
-    'MYC_rna', 'TERT_rna', 'ATRX_rna', 'MGMT_rna', 'GATA3_rna',
-    'FOXA1_rna', 'ESR1_rna', 'PGR_rna', 'ERBB2_rna', 'CDH1_rna',
-    'MKI67_rna', 'TOP2A_rna', 'PCNA_rna', 'MCM6_rna', 'BIRC5_rna',
-    'CCNB1_rna', 'CCND1_rna', 'CCNE1_rna', 'AURKA_rna', 'PLK1_rna',
-    'CENPF_rna', 'ASPM_prot', 'KIF11_rna', 'NUSAP1_rna', 'PRC1_rna',
-    'UBE2C_rna', 'PTTG1_rna', 'CDC20_rna', 'CDKN2A_rna', 'CDKN2B_rna',
-    'CDK6_rna', 'MET_rna', 'PDGFRA_prot', 'FGFR1_rna', 'FGFR3_rna',
-    'NOTCH1_rna', 'DLL3_rna', 'HES1_rna', 'ASCL1_rna', 'NEUROD1_rna',
-    'POU3F2_rna', 'SOX10_rna', 'NKX2-2_rna', 'OLIG1_rna', 'MAG_prot',
-    'MOG_prot', 'CNP_prot', 'GPR17_rna'
-]
+# Custom CSS for Light Theme, Grey Sidebar, Dark Grey Buttons, and Black Text
+# Custom CSS for Light Grey Theme Elements and Dark Grey Buttons
+st.markdown("""
+    <style>
+    /* 1. Main Background (White) */
+    .stApp { 
+        background-color: #FFFFFF !important; 
+    }
+
+    /* 2. Header Background (Light Grey) */
+    header[data-testid="stHeader"] {
+        background-color: #F0F2F6 !important;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* 3. Sidebar Background (Light Grey) */
+    [data-testid="stSidebar"] {
+        background-color: #F0F2F6 !important;
+        border-right: 1px solid #e0e0e0;
+    }
+
+   /* 4. File Uploader Area: Square and Light Grey */
+    [data-testid="stFileUploadDropzone"] {
+        background-color: #F0F2F6 !important;
+        border: 2px solid #A0A0A0 !important;
+        border-radius: 0px !important;
+        color: #000000 !important;
+    }
+
+    /* 5. Universal Black Text */
+    html, body, [class*="css"], .stMarkdown, p, span, label, 
+    h1, h2, h3, h4, h5, h6, table, th, td {
+        color: #000000 !important;
+    }
+
+    /* 6. DARK GREY BUTTONS WITH BLACK TEXT */
+    /* Targeting Standard, Download, and 'Browse files' buttons */
+    button, 
+    div.stButton > button, 
+    div.stDownloadButton > button, 
+    [data-testid="stFileUploadDropzone"] button {
+        background-color: #A0A0A0 !important; 
+        color: #000000 !important;           
+        border: 1px solid #707070 !important;
+        font-weight: bold !important;
+    }
+
+    /* Force button text/labels to be black */
+    button div p, button span, .stButton p {
+        color: #000000 !important;
+    }
+
+    /* 7. Metrics and Tables */
+    [data-testid="stMetricValue"] {
+        color: #000000 !important;
+    }
+    [data-testid="stTable"] td, [data-testid="stTable"] th {
+        color: #000000 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
-@st.cache_resource
+# 1. First, define the function
+@st.cache_resource  # Highly recommended for Streamlit performance
 def load_model_assets():
     try:
-        # NOTE: Ensure these paths are accessible by the Streamlit runner
-        with open('/Users/yeroabketemasamuel/Desktop/MODEL/clinical_model.pkl', 'rb') as f:
+        model_path = '/Users/yeroabketemasamuel/Desktop/MODEL/gbm_diagnostic_model-1.pkl'
+        with open(model_path, 'rb') as f:
             model = pickle.load(f)
-        with open('/Users/yeroabketemasamuel/Desktop/MODEL/clinical_features.pkl', 'rb') as f:
-            all_features = pickle.load(f)
-        return model, all_features
+
+        # This extracts the names from your XGBoost model
+        feature_list = model.get_booster().feature_names
+        return model, feature_list
     except Exception as e:
-        st.error(f"Error loading models: {e}")
+        st.error(f"Error loading model assets: {e}")
         return None, None
 
 
-model, feature_list = load_model_assets()
+# 2. NOW, call the function to create the variables in the main script
+# This is the line that fixes your "NameError: feature_list is not defined"
+
+model , feature_list = load_model_assets()
 
 # --- 3. NAVIGATION SIDEBAR ---
 st.sidebar.title("Navigation")
@@ -70,6 +117,7 @@ st.sidebar.markdown("---")
 
 with st.sidebar:
     st.header("Data Tools")
+    assert isinstance(feature_list, object)
     if feature_list:
         template_df = pd.DataFrame(0.0, index=[0], columns=feature_list)
         csv_data = template_df.to_csv(index=False).encode('utf-8')
@@ -78,7 +126,7 @@ with st.sidebar:
             data=csv_data,
             file_name="biomarker_template_843.csv",
             mime="text/csv",
-            help="Download this file, fill in your 81 markers, and leave the rest as 0."
+            help="Download this file, fill in your markers, and leave the rest as 0."
         )
     st.info("Tip: You only need to fill in the available relevant markers. The model will handle the rest")
 
