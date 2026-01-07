@@ -104,7 +104,7 @@ if page == "Main Analysis":
             sorted_features = RELEVANT_PANEL + [f for f in feature_list if f not in RELEVANT_PANEL]
             template_df = pd.DataFrame(0.0, index=[0], columns=sorted_features)
             csv_data = template_df.to_csv(index=False).encode('utf-8')
-            st.download_button(label="📥 Download Template", data=csv_data, file_name="biomarker_template.csv", mime="text/csv")
+            st.download_button(label="Download Template", data=csv_data, file_name="biomarker_template.csv", mime="text/csv")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_up:
