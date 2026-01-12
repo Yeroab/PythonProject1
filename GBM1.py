@@ -3,13 +3,15 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
-import time
-
 
 # --- 1. HELPER FUNCTIONS ---
 def align_data_to_model(user_df, master_feature_list):
-    # Initialize with 0.0
-    aligned_df = pd.DataFrame(0.0, index=[0], columns=master_feature_list)
+    """
+    Standardizes input to match the 843-feature vector exactly.
+    Fills missing values with np.nan to avoid 'Zero-bias' (the 98% issue).
+    """
+    # Initialize with NaN instead of 0.0 to prevent probability saturation
+    aligned_df = pd.DataFrame(np.nan, index=[0], columns=master_feature_list)
 
     # Standardize column names for comparison
     user_cols_clean = {str(c).strip().lower(): c for c in user_df.columns}
@@ -18,16 +20,13 @@ def align_data_to_model(user_df, master_feature_list):
         clean_name = official_name.lower().strip()
         if clean_name in user_cols_clean:
             original_col = user_cols_clean[clean_name]
-            # Use .iloc[0] to ensure we get a single number
-            raw_val = user_df[original_col].iloc[0] if isinstance(user_df[original_col], (pd.Series, np.ndarray)) else \
-                user_df[original_col]
+            raw_val = user_df[original_col].iloc[0] if isinstance(user_df[original_col], (pd.Series, np.ndarray)) else user_df[original_col]
             try:
                 aligned_df[official_name] = float(raw_val)
             except (ValueError, TypeError):
-                aligned_df[official_name] = 0.0
+                pass # Remain NaN if non-numeric
 
     return aligned_df
-
 
 # --- 2. CONFIGURATION & ASSETS ---
 st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
@@ -52,6 +51,23 @@ RELEVANT_PANEL = [
     'MOG_prot', 'CNP_prot', 'GPR17_rna'
 ]
 
+@st.cache_resource
+def load_model_assets():
+    try:
+        # Load the XGBoost Model
+        with open('gbm_diagnostic_model-1.pkl', 'rb') as f:
+            model = pickle.load(f)
+        
+        # Load the 843 clinical features to ensure correct order
+        with open('clinical_features.pkl', 'rb') as f:
+            feature_list = pickle.load(f)
+            
+        return model, feature_list
+    except:
+        return None, None
+
+model, feature_list = load_model_assets()
+
 # --- 3. CUSTOM CSS ---
 st.markdown("""
     <style>
@@ -60,48 +76,18 @@ st.markdown("""
         background-color: #F0F2F6 !important;
         border-bottom: 1px solid #e0e0e0;
     }
-    [data-testid="stFileUploadDropzone"] {
-        background-color: #F0F2F6 !important;
-        border: 2px solid #A0A0A0 !important;
-        border-radius: 0px !important;
-    }
     html, body, .stMarkdown, p, span, label, h1, h2, h3, h4, h5, h6, table, th, td {
         color: #000000 !important;
     }
-    button, div.stButton > button, div.stDownloadButton > button {
-        background-color: #A0A0A0 !important; 
-        color: #000000 !important;           
-        border: 1px solid #707070 !important;
-        font-weight: bold !important;
-        border-radius: 0px !important;
-    }
-    .clean-template-section { padding: 10px 0px; text-align: left; }
+    button { background-color: #A0A0A0 !important; color: #000000 !important; font-weight: bold !important; border-radius: 0px !important; }
     </style>
     """, unsafe_allow_html=True)
-
-
-@st.cache_resource
-def load_model_assets():
-    try:
-        model_path = 'gbm_diagnostic_model-1.pkl'
-        with open(model_path, 'rb') as f:
-            loaded_object = pickle.load(f)
-        if isinstance(loaded_object, dict):
-            return loaded_object['model'], loaded_object['features']
-        else:
-            # Fallback for direct model objects
-            return loaded_object, getattr(loaded_object, 'feature_names_in_', None)
-    except:
-        return None, None
-
-
-model, feature_list = load_model_assets()
 
 # --- 4. NAVIGATION SIDEBAR ---
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Select Page:", ["Main Analysis", "Documentation", "Demo Walkthrough"])
 st.sidebar.markdown("---")
-st.sidebar.info("Tip: You only need to fill in available markers. Blank fields will be treated as zero.")
+st.sidebar.info(f"System loaded with {len(feature_list) if feature_list else 0} features.")
 
 # --- 5. PAGE: MAIN ANALYSIS ---
 if page == "Main Analysis":
@@ -110,23 +96,16 @@ if page == "Main Analysis":
     col_dl, col_up = st.columns(2)
     with col_dl:
         st.subheader("1. Download Format")
-        st.markdown('<div class="clean-template-section">', unsafe_allow_html=True)
         if feature_list is not None:
-            sorted_features = RELEVANT_PANEL + [f for f in feature_list if f not in RELEVANT_PANEL]
-            template_df = pd.DataFrame(0.0, index=[0], columns=sorted_features)
-            csv_data = template_df.to_csv(index=False).encode('utf-8')
-            st.download_button(label="Download Template", data=csv_data, file_name="biomarker_template.csv",
-                               mime="text/csv")
-        st.markdown('</div>', unsafe_allow_html=True)
+            template_df = pd.DataFrame(0.0, index=[0], columns=feature_list)
+            st.download_button(label="Download Template", data=template_df.to_csv(index=False).encode('utf-8'), file_name="biomarker_template.csv", mime="text/csv")
 
     with col_up:
         st.subheader("2. Upload Patient Data")
         uploaded_file = st.file_uploader("Upload CSV", type=["csv"], label_visibility="collapsed")
 
     st.markdown("---")
-
     st.subheader("3. Manual Marker Entry")
-    st.write("Input values for specific markers (defaults to 0.0 if left blank).")
     manual_data = {}
     m_cols = st.columns(4)
     for i, marker in enumerate(RELEVANT_PANEL[:12]):
@@ -134,56 +113,27 @@ if page == "Main Analysis":
             manual_data[marker] = st.number_input(f"{marker}", value=0.0)
 
     if st.button("Run Full Clinical Analysis"):
-        if model and feature_list is not None:
-            # FIXED DATA MERGING LOGIC
+        if model and feature_list:
             input_df = pd.DataFrame([manual_data])
-
             if uploaded_file:
-                file_df = pd.read_csv(uploaded_file).iloc[[0]]  # Ensure only first row
-                # Combine uploaded data with manual data, uploaded taking precedence
+                file_df = pd.read_csv(uploaded_file).iloc[[0]]
                 for col in file_df.columns:
                     input_df[col] = file_df[col].values
 
-            with st.spinner("Processing Multi-Omic Data..."):
-                # 1. Align to the full feature list
+            with st.spinner("Processing..."):
                 processed_df = align_data_to_model(input_df, feature_list)
-
-                # 2. Convert to NumPy and fix shape
                 data_matrix = processed_df.to_numpy().astype(np.float32)
+                prob = float(model.predict_proba(data_matrix)[0][1])
 
-                # 3. Predict probability
-                prob_array = model.predict_proba(data_matrix)
-                prob = float(prob_array[0][1])
-
-            # --- Display Results ---
             st.markdown("---")
-            res_col1, res_col2 = st.columns(2)
-            res_col1.metric("Risk Probability", f"{prob:.2%}")
-
+            res_c1, res_c2 = st.columns(2)
+            res_c1.metric("Risk Probability", f"{prob:.2%}")
             status = "HIGH RISK" if prob > 0.5 else "LOW RISK"
             color = "red" if prob > 0.5 else "green"
-            res_col2.markdown(f"**Classification:** <span style='color:{color}; font-weight:bold;'>{status}</span>",
-                              unsafe_allow_html=True)
+            res_c2.markdown(f"**Classification:** <span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
             st.progress(prob)
 
-            with st.expander("View Detected Biomarker Values"):
-                feature_lookup = {f.lower().strip(): f for f in feature_list}
-                found_data = []
-                for marker in RELEVANT_PANEL:
-                    marker_clean = marker.lower().strip()
-                    if marker_clean in feature_lookup:
-                        off_name = feature_lookup[marker_clean]
-                        val = processed_df[off_name].iloc[0]
-                        if val != 0:
-                            found_data.append({"Marker": off_name, "Value": val})
-                if found_data:
-                    st.table(pd.DataFrame(found_data))
-                else:
-                    st.write("No active markers detected.")
-        else:
-            st.error("Model assets not loaded. Please check the model file.")
-
-# --- 6. PAGE: DOCUMENTATION ---
+# --- 6. PAGE: DOCUMENTATION (UNCHANGED) ---
 elif page == "Documentation":
     st.header("Documentation for Multiomics GBM Biomarker Identifier")
     st.subheader("1. Data Inputting")
@@ -206,15 +156,11 @@ elif page == "Documentation":
 elif page == "Demo Walkthrough":
     st.header("Demo Mode")
     if st.button("Generate & Analyze Demo Patient"):
-        if model and feature_list is not None:
-            # Use random data that varies significantly
+        if model and feature_list:
             dummy_data = np.random.rand(1, len(feature_list)).astype(np.float32)
             prob = float(model.predict_proba(dummy_data)[0][1])
             st.metric("Probability Score", f"{prob:.2%}")
             st.progress(prob)
-            demo_display = pd.DataFrame(dummy_data, columns=feature_list)
-            st.table(demo_display[RELEVANT_PANEL[:10]].T.rename(columns={0: "Value"}))
 
-# --- FOOTER ---
 st.markdown("---")
 st.caption("Experimental Multi-Omic Analysis Tool | Objective: Binary Logistic Regression")
