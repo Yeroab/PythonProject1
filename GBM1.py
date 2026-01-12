@@ -6,28 +6,26 @@ import os
 import time
 
 # --- 1. HELPER FUNCTIONS ---
-def align_data_to_model(input_dict, master_feature_list):
-    # Create a base row of zeros
+def align_data_to_model(user_df, master_feature_list):
+    # Initialize with 0.0
     aligned_df = pd.DataFrame(0.0, index=[0], columns=master_feature_list)
 
-    # Standardize the keys in our input for matching
-    # This handles case sensitivity (DNA vs dna) and whitespace
-    clean_input = {str(k).strip().lower(): v for k, v in input_dict.items()}
+    # Standardize column names for comparison
+    user_cols_clean = {str(c).strip().lower(): c for c in user_df.columns}
 
-    matched_features = []
     for official_name in master_feature_list:
-        clean_name = str(official_name).strip().lower()
-        if clean_name in clean_input:
-            val = clean_input[clean_name]
-            # Ensure it's a number
+        clean_name = official_name.lower().strip()
+        if clean_name in user_cols_clean:
+            original_col = user_cols_clean[clean_name]
+            # Use .iloc[0] to ensure we get a single number, not a list/series
+            raw_val = user_df[original_col].iloc[0] if isinstance(user_df[original_col], (pd.Series, np.ndarray)) else \
+            user_df[original_col]
             try:
-                aligned_df[official_name] = float(val)
-                if float(val) != 0:
-                    matched_features.append(official_name)
-            except:
-                continue
+                aligned_df[official_name] = float(raw_val)
+            except (ValueError, TypeError):
+                aligned_df[official_name] = 0.0
 
-    return aligned_df, matched_features
+    return aligned_df
 # --- 2. CONFIGURATION & ASSETS ---
 st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
@@ -131,27 +129,40 @@ if page == "Main Analysis":
         with m_cols[i % 4]:
             manual_data[marker] = st.number_input(f"{marker}", value=0.0)
 
-    if st.button("Run Full Clinical Analysis"):
+        if st.button("Run Full Clinical Analysis"):
         if model:
-            # Merge logic: Manual entry + Uploaded File
-            input_dict = {f: [v] for f, v in manual_data.items()}
-            input_df = pd.DataFrame(input_dict)
-            
+            # Create a clean dictionary for all inputs
+            combined_dict = {k: [v] for k, v in manual_data.items()}
+
             if uploaded_file:
                 file_df = pd.read_csv(uploaded_file)
                 for col in file_df.columns:
-                    input_df[col] = file_df[col].values
+                    # Get the first row value only
+                    combined_dict[col] = [file_df[col].iloc[0]]
+
+            # Convert to a single-row DataFrame
+            input_df = pd.DataFrame(combined_dict)
 
             with st.spinner("Processing Multi-Omic Data..."):
+                # 1. Align to the 843 columns
                 processed_df = align_data_to_model(input_df, feature_list)
-                prob = float(model.predict_proba(processed_df)[0][1])
 
+                # 2. Convert to NumPy (Fixes the XGBoost Version/ValueError crash)
+                # This strips the names and just gives the model the raw numbers it needs
+                data_matrix = processed_df.to_numpy().astype(np.float32)
+
+                # 3. Predict
+                prob = float(model.predict_proba(data_matrix)[0][1])
+
+            # --- Display Results ---
             st.markdown("---")
             res_col1, res_col2 = st.columns(2)
             res_col1.metric("Risk Probability", f"{prob:.2%}")
+
             status = "HIGH RISK" if prob > 0.5 else "LOW RISK"
             color = "red" if prob > 0.5 else "green"
-            res_col2.markdown(f"**Classification:** <span style='color:{color}; font-weight:bold;'>{status}</span>", unsafe_allow_html=True)
+            res_col2.markdown(f"**Classification:** <span style='color:{color}; font-weight:bold;'>{status}</span>",
+                              unsafe_allow_html=True)
             st.progress(prob)
 
             with st.expander("View Detected Biomarker Values"):
