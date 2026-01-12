@@ -6,19 +6,28 @@ import os
 import time
 
 # --- 1. HELPER FUNCTIONS ---
-def align_data_to_model(user_df, master_feature_list):
-    # 1. Create empty DF with correct columns
-    aligned_df = pd.DataFrame(0.0, index=range(len(user_df)), columns=master_feature_list)
+def align_data_to_model(input_dict, master_feature_list):
+    # Create a base row of zeros
+    aligned_df = pd.DataFrame(0.0, index=[0], columns=master_feature_list)
 
-    # 2. Standardize user columns for matching
-    user_df.columns = [c.strip() for c in user_df.columns]
+    # Standardize the keys in our input for matching
+    # This handles case sensitivity (DNA vs dna) and whitespace
+    clean_input = {str(k).strip().lower(): v for k, v in input_dict.items()}
 
-    # 3. Fill the aligned_df
-    for col in master_feature_list:
-        if col in user_df.columns:
-            aligned_df[col] = pd.to_numeric(user_df[col], errors='coerce').fillna(0.0).values
+    matched_features = []
+    for official_name in master_feature_list:
+        clean_name = str(official_name).strip().lower()
+        if clean_name in clean_input:
+            val = clean_input[clean_name]
+            # Ensure it's a number
+            try:
+                aligned_df[official_name] = float(val)
+                if float(val) != 0:
+                    matched_features.append(official_name)
+            except:
+                continue
 
-    return aligned_df
+    return aligned_df, matched_features
 # --- 2. CONFIGURATION & ASSETS ---
 st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
