@@ -5,6 +5,7 @@ import pickle
 import os
 import time
 
+
 # --- 1. HELPER FUNCTIONS ---
 def align_data_to_model(user_df, master_feature_list):
     # Initialize with 0.0
@@ -17,15 +18,17 @@ def align_data_to_model(user_df, master_feature_list):
         clean_name = official_name.lower().strip()
         if clean_name in user_cols_clean:
             original_col = user_cols_clean[clean_name]
-            # Use .iloc[0] to ensure we get a single number, not a list/series
+            # Use .iloc[0] to ensure we get a single number
             raw_val = user_df[original_col].iloc[0] if isinstance(user_df[original_col], (pd.Series, np.ndarray)) else \
-            user_df[original_col]
+                user_df[original_col]
             try:
                 aligned_df[official_name] = float(raw_val)
             except (ValueError, TypeError):
                 aligned_df[official_name] = 0.0
 
     return aligned_df
+
+
 # --- 2. CONFIGURATION & ASSETS ---
 st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
@@ -76,6 +79,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+
 @st.cache_resource
 def load_model_assets():
     try:
@@ -85,9 +89,11 @@ def load_model_assets():
         if isinstance(loaded_object, dict):
             return loaded_object['model'], loaded_object['features']
         else:
-            return loaded_object, loaded_object.get_booster().feature_names
+            # Fallback for direct model objects
+            return loaded_object, getattr(loaded_object, 'feature_names_in_', None)
     except:
         return None, None
+
 
 model, feature_list = load_model_assets()
 
@@ -100,17 +106,17 @@ st.sidebar.info("Tip: You only need to fill in available markers. Blank fields w
 # --- 5. PAGE: MAIN ANALYSIS ---
 if page == "Main Analysis":
     st.header("Patient Clinical Analysis")
-    
-    # DOWNLOAD & UPLOAD SECTION
+
     col_dl, col_up = st.columns(2)
     with col_dl:
         st.subheader("1. Download Format")
         st.markdown('<div class="clean-template-section">', unsafe_allow_html=True)
-        if feature_list:
+        if feature_list is not None:
             sorted_features = RELEVANT_PANEL + [f for f in feature_list if f not in RELEVANT_PANEL]
             template_df = pd.DataFrame(0.0, index=[0], columns=sorted_features)
             csv_data = template_df.to_csv(index=False).encode('utf-8')
-            st.download_button(label="Download Template", data=csv_data, file_name="biomarker_template.csv", mime="text/csv")
+            st.download_button(label="Download Template", data=csv_data, file_name="biomarker_template.csv",
+                               mime="text/csv")
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col_up:
@@ -118,41 +124,36 @@ if page == "Main Analysis":
         uploaded_file = st.file_uploader("Upload CSV", type=["csv"], label_visibility="collapsed")
 
     st.markdown("---")
-    
-    # MANUAL ENTRY SECTION
+
     st.subheader("3. Manual Marker Entry")
     st.write("Input values for specific markers (defaults to 0.0 if left blank).")
     manual_data = {}
     m_cols = st.columns(4)
-    # Displaying the top 12 markers for manual entry
     for i, marker in enumerate(RELEVANT_PANEL[:12]):
         with m_cols[i % 4]:
             manual_data[marker] = st.number_input(f"{marker}", value=0.0)
 
     if st.button("Run Full Clinical Analysis"):
-        if model:
-            # Create a clean dictionary for all inputs
-            combined_dict = {k: [v] for k, v in manual_data.items()}
+        if model and feature_list is not None:
+            # FIXED DATA MERGING LOGIC
+            input_df = pd.DataFrame([manual_data])
 
             if uploaded_file:
-                file_df = pd.read_csv(uploaded_file)
+                file_df = pd.read_csv(uploaded_file).iloc[[0]]  # Ensure only first row
+                # Combine uploaded data with manual data, uploaded taking precedence
                 for col in file_df.columns:
-                    # Get the first row value only
-                    combined_dict[col] = [file_df[col].iloc[0]]
-
-            # Convert to a single-row DataFrame
-            input_df = pd.DataFrame(combined_dict)
+                    input_df[col] = file_df[col].values
 
             with st.spinner("Processing Multi-Omic Data..."):
-                # 1. Align to the 843 columns
+                # 1. Align to the full feature list
                 processed_df = align_data_to_model(input_df, feature_list)
 
-                # 2. Convert to NumPy (Fixes the XGBoost Version/ValueError crash)
-                # This strips the names and just gives the model the raw numbers it needs
+                # 2. Convert to NumPy and fix shape
                 data_matrix = processed_df.to_numpy().astype(np.float32)
 
-                # 3. Predict
-                prob = float(model.predict_proba(data_matrix)[0][1])
+                # 3. Predict probability
+                prob_array = model.predict_proba(data_matrix)
+                prob = float(prob_array[0][1])
 
             # --- Display Results ---
             st.markdown("---")
@@ -179,6 +180,8 @@ if page == "Main Analysis":
                     st.table(pd.DataFrame(found_data))
                 else:
                     st.write("No active markers detected.")
+        else:
+            st.error("Model assets not loaded. Please check the model file.")
 
 # --- 6. PAGE: DOCUMENTATION ---
 elif page == "Documentation":
@@ -194,21 +197,23 @@ elif page == "Documentation":
     st.subheader("2. Step-by-Step Workflow")
     st.write("""
     Processed after data is inputted: The inputted data is scanned and matched to the feature list of different omics (Proteomics, metabolomics, transcriptomics) and bridges minor header naming differences. 
-    Because the XGBoost model requires a fixed input width of 843, the system creates a "Full-Scale Vector." The available measurements are placed into their specific active slots, while the remaining slots are filled with zeros to maintain structural integrity. 
-    The model calculates the statistical weights of your 81 biomarkers against the background noise to determine a risk probability. 
-    The raw output is converted into a probability Score (%) and a risk classification (Low vs. High Risk).
+    Because the XGBoost model requires a fixed input width, the system creates a "Full-Scale Vector." The available measurements are placed into their specific active slots, while the remaining slots are filled with zeros. 
+    The model calculates the statistical weights of your biomarkers against the background noise to determine a risk probability. 
+    The raw output is converted into a probability Score (%) and a risk classification.
     """)
 
 # --- 7. PAGE: DEMO WALKTHROUGH ---
 elif page == "Demo Walkthrough":
     st.header("Demo Mode")
     if st.button("Generate & Analyze Demo Patient"):
-        dummy_data = np.random.uniform(0.1, 5.0, size=(1, len(feature_list)))
-        demo_df = pd.DataFrame(dummy_data, columns=feature_list)
-        prob = float(model.predict_proba(demo_df)[0][1])
-        st.metric("Probability Score", f"{prob:.2%}")
-        st.progress(prob)
-        st.table(demo_df[RELEVANT_PANEL[:10]].T.rename(columns={0: "Value"}))
+        if model and feature_list is not None:
+            # Use random data that varies significantly
+            dummy_data = np.random.rand(1, len(feature_list)).astype(np.float32)
+            prob = float(model.predict_proba(dummy_data)[0][1])
+            st.metric("Probability Score", f"{prob:.2%}")
+            st.progress(prob)
+            demo_display = pd.DataFrame(dummy_data, columns=feature_list)
+            st.table(demo_display[RELEVANT_PANEL[:10]].T.rename(columns={0: "Value"}))
 
 # --- FOOTER ---
 st.markdown("---")
