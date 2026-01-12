@@ -52,19 +52,50 @@ RELEVANT_PANEL = [
 ]
 
 @st.cache_resource
+@st.cache_resource
 def load_model_assets():
     try:
-        # Load the XGBoost Model
-        with open('gbm_diagnostic_model-1.pkl', 'rb') as f:
-            model = pickle.load(f)
+        model_path = 'gbm_diagnostic_model-1.pkl'
+        with open(model_path, 'rb') as f:
+            loaded_object = pickle.load(f)
         
-        # Load the 843 clinical features to ensure correct order
+        # FEATURE LIST LOADING
         with open('clinical_features.pkl', 'rb') as f:
             feature_list = pickle.load(f)
-            
-        return model, feature_list
-    except:
+
+        # CHECK IF LOADED OBJECT IS A DICT (Common if saved via certain pipelines)
+        if isinstance(loaded_object, dict):
+            # Try common keys
+            actual_model = loaded_object.get('model') or loaded_object.get('classifier')
+            return actual_model, feature_list
+        
+        return loaded_object, feature_list
+    except Exception as e:
+        st.error(f"Error loading model assets: {e}")
         return None, None
+
+# ... in your "Run Clinical Analysis" block ...
+
+if st.button("Run Full Clinical Analysis"):
+    if model is not None:
+        # ... your existing data alignment code ...
+        
+        try:
+            # Ensure data_matrix is a 2D array
+            data_matrix = processed_df.to_numpy().astype(np.float32)
+            
+            # Final check: Does the object have the method?
+            if hasattr(model, "predict_proba"):
+                prob_array = model.predict_proba(data_matrix)
+                prob = float(prob_array[0][1])
+            else:
+                # Fallback if it's a regression model or direct Booster
+                st.error("The loaded object is not a classifier. It lacks 'predict_proba'.")
+                st.write("Object type:", type(model))
+                st.stop()
+                
+        except Exception as e:
+            st.error(f"Prediction Error: {e}")
 
 model, feature_list = load_model_assets()
 
