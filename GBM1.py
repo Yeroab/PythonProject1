@@ -129,7 +129,7 @@ if page == "Main Analysis":
         with m_cols[i % 4]:
             manual_data[marker] = st.number_input(f"{marker}", value=0.0)
 
-        if st.button("Run Full Clinical Analysis"):
+    if st.button("Run Full Clinical Analysis"):
         if model:
             # Create a clean dictionary for all inputs
             combined_dict = {k: [v] for k, v in manual_data.items()}
