@@ -7,19 +7,18 @@ import time
 
 # --- 1. HELPER FUNCTIONS ---
 def align_data_to_model(user_df, master_feature_list):
-    """
-    Robustly forces the user's data into the exact 843-column structure.
-    Ensures column order matches the model training exactly.
-    """
+    # 1. Create empty DF with correct columns
     aligned_df = pd.DataFrame(0.0, index=range(len(user_df)), columns=master_feature_list)
-    user_df.columns = [c.strip().lower() for c in user_df.columns]
-    master_map = {f.lower(): f for f in master_feature_list}
-    for col in user_df.columns:
-        if col in master_map:
-            actual_name = master_map[col]
-            aligned_df[actual_name] = pd.to_numeric(user_df[col], errors='coerce').fillna(0.0).values
-    return aligned_df
 
+    # 2. Standardize user columns for matching
+    user_df.columns = [c.strip() for c in user_df.columns]
+
+    # 3. Fill the aligned_df
+    for col in master_feature_list:
+        if col in user_df.columns:
+            aligned_df[col] = pd.to_numeric(user_df[col], errors='coerce').fillna(0.0).values
+
+    return aligned_df
 # --- 2. CONFIGURATION & ASSETS ---
 st.set_page_config(page_title="Multi-Omic Diagnostic Portal", layout="wide", page_icon="🧬")
 
