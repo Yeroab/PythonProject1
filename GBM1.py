@@ -54,7 +54,7 @@ if app_mode == "Main Diagnosis":
 
                 submitted = st.form_submit_button("Run Diagnosis")
 
-                if submitted:
+ if submitted:
     # 1. Create the dictionary from user inputs
     full_input = {f: [user_inputs.get(f, 0.0)] for f in features}
     input_df = pd.DataFrame(full_input)
