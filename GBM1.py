@@ -56,11 +56,25 @@ if app_mode == "Main Diagnosis":
                     prob = model.predict_proba(input_df[all_features])[0][1]
 
                     st.divider()
+                    
+                    # --- ADDED: BAR GRAPH FOR MANUAL INPUTS ---
+                    st.subheader("📊 Input Biomarker Profile")
+                    # Create a dataframe of the values the user actually typed in
+                    manual_chart_data = pd.DataFrame({
+                        "Biomarker": top_10,
+                        "Raw Value": [user_inputs[f] for f in top_10]
+                    }).set_index("Biomarker")
+                    st.bar_chart(manual_chart_data)
+
                     st.write(f"### Probability of GBM: {prob:.2%}")
                     if prob > 0.5:
                         st.error("Diagnostic Result: POSITIVE")
                     else:
                         st.success("Diagnostic Result: NEGATIVE")
+                    
+                    # Also show the importance chart for context
+                    with st.expander("View Model Feature Importance"):
+                        st.bar_chart(feat_df.head(10).set_index('feature'))
 
         with tab2:
             st.subheader("Bulk Patient Processing")
@@ -98,6 +112,14 @@ if app_mode == "Main Diagnosis":
                         lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
 
                     st.success(f"Successfully processed {len(bulk_df)} patient records.")
+                    
+                    st.subheader("📊 Comparative Risk Analysis")
+                    chart_df = bulk_df[['Patient_ID', 'GBM_Probability']].copy()
+                    chart_df = chart_df.set_index('Patient_ID')
+                    st.bar_chart(chart_df)
+                    
+                    st.divider()
+                    st.write("### Detailed Results Table")
                     st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + top_10])
 
                     result_buffer = io.BytesIO()
@@ -106,7 +128,7 @@ if app_mode == "Main Diagnosis":
                     st.download_button("Download Processed Results", data=result_buffer, file_name="gbm_results.csv",
                                        mime="text/csv")
                 else:
-                    st.error(f"The uploaded file is missing {len(missing_cols)} required columns.")
+                    st.error(f"The uploaded file is missing required columns.")
                     with st.expander("Show missing columns"):
                         st.write(missing_cols)
 
