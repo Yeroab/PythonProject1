@@ -55,19 +55,25 @@ if app_mode == "Main Diagnosis":
                 submitted = st.form_submit_button("Run Diagnosis")
 
                 if submitted:
-                    # Create full feature row (fill missing features with 0)
-                    full_input = {f: [user_inputs.get(f, 0.0)] for f in features}
-                    input_df = pd.DataFrame(full_input)
+    # 1. Create the dictionary from user inputs
+    full_input = {f: [user_inputs.get(f, 0.0)] for f in features}
+    input_df = pd.DataFrame(full_input)
+    
+    # --- DEBUG SECTION ---
+    st.write("### Debug: Model Input Snapshot")
+    st.write("This is what the model is actually seeing (first 5 columns):")
+    st.dataframe(input_df[features].head())
+    # ---------------------
 
-                    prediction = model_obj.predict(input_df[features])[0]
-                    prob = model_obj.predict_proba(input_df[features])[0][1]
-
-                    st.divider()
-                    if prediction == 1:
-                        st.error("### Result: High Probability of GBM")
-                    else:
-                        st.success("### Result: Low Probability of GBM")
-                    st.metric("Model Confidence", f"{prob:.2%}")
+    # 2. Run the prediction
+    prediction = diag_model['model'].predict(input_df[features])[0]
+    prob = diag_model['model'].predict_proba(input_df[features])[0][1]
+    
+    st.divider()
+    if prediction == 1:
+        st.error(f"### Result: POSITIVE (Probability: {prob:.2%})")
+    else:
+        st.success(f"### Result: NEGATIVE (Probability: {prob:.2%})")
 
         with tab2:
             st.subheader("Upload Patient Records")
