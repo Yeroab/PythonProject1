@@ -73,21 +73,9 @@ elif app_mode == "Interactive Demo Walkthrough":
     st.title("🚀 Interactive Platform Walkthrough")
     
     st.subheader("Introduction")
-    st.write("This interactive demo simulates a clinical workflow. Follow the steps below to understand how raw data affects the AI's diagnostic confidence.")
+    st.write("Follow the steps below to simulate a clinical workflow and see how specific feature values change the AI diagnostic output.")
 
     st.markdown("---")
-    
-    # Step 1: Feature Importance
-    st.subheader("Step 1: Understanding Model Sensitivity")
-    st.write("Before inputting data, the system identifies the most important features. These are the biomarkers that 'move the needle' the most. In a raw data model, providing data for these 10 markers is more effective than providing data for 1,000 low-impact markers.")
-    
-    
-
-    # Step 2: Interactive Simulation
-    st.subheader("Step 2: Interactive Data Simulation")
-    st.write("Click one of the buttons below to load pre-set values into the model and see the difference in probability results.")
-    
-    col1, col2 = st.columns(2)
     
     if diag:
         model = diag['model']
@@ -96,37 +84,55 @@ elif app_mode == "Interactive Demo Walkthrough":
         feat_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values(by='importance', ascending=False)
         top_10 = feat_df['feature'].head(10).tolist()
 
-        sim_data = None
+        # Step 1: Selection
+        st.subheader("Step 1: Select a Clinical Case Profile")
+        col1, col2 = st.columns(2)
         
+        sim_data = None
+        profile_label = ""
+
         with col1:
-            if st.button("Load Healthy Control (Low Values)"):
-                # Simulate a healthy patient with low expression levels
+            if st.button("Simulate: Healthy Control"):
+                profile_label = "Healthy Control"
                 sim_data = {f: [5.0] for f in all_features}
-                st.info("Loaded Low-Expression Profile")
         
         with col2:
-            if st.button("Load GBM Patient (High Values)"):
-                # Simulate a GBM patient with high expression in top features
+            if st.button("Simulate: GBM-Positive Patient"):
+                profile_label = "GBM-Positive Patient"
                 sim_data = {f: [0.0] for f in all_features}
                 for f in top_10:
-                    sim_data[f] = [5000.0] # Set high values for top 10
-                st.warning("Loaded High-Expression Profile")
+                    sim_data[f] = [5000.0] 
 
         if sim_data:
-            st.markdown("### Step 3: Real-Time Prediction")
+            st.info(f"Active Simulation: {profile_label}")
+            
+            # Step 2: Show Feature List
+            st.subheader("Step 2: Feature and Value List")
+            st.write("The following biomarkers and their raw values are being sent to the AI model for this simulation:")
+            
+            # Prepare the list/table of features and values
+            display_list = []
+            for f in top_10:
+                display_list.append({"Biomarker (Feature)": f, "Raw Value": sim_data[f][0]})
+            
+            # Displaying as a clean table
+            st.table(pd.DataFrame(display_list))
+
+            # Step 3: Result
+            st.subheader("Step 3: Real-Time Diagnostic Result")
             sim_df = pd.DataFrame(sim_data)
             prob = model.predict_proba(sim_df[all_features])[0][1]
             
-            st.write(f"**Calculated Probability:**")
+            st.write(f"**AI Confidence Score:**")
             st.progress(float(prob))
             
             if prob > 0.5:
                 st.error(f"Prediction: POSITIVE ({prob:.2%})")
-                st.write("Notice how the probability jumped. By providing high raw values for the 'Critical' biomarkers, we have triggered the model's GBM detection thresholds.")
+                st.write("The high raw values assigned to the critical biomarkers above triggered a Positive diagnosis.")
             else:
                 st.success(f"Prediction: NEGATIVE ({prob:.2%})")
-                st.write("Even though the model defaults to 98.5% with zeros, providing low-but-consistent 'Healthy' values allows the model to differentiate and lower its confidence.")
+                st.write("The low raw values assigned to the biomarkers represent a healthy profile, resulting in a Negative diagnosis.")
 
     st.markdown("---")
-    st.subheader("Step 4: Final Clinical Interpretation")
-    st.write("Once the prediction is generated, the clinician uses the Feature Contribution chart (found on the Main Diagnosis page) to verify which specific gene or protein drove the result. This 'Explainable AI' approach ensures the diagnosis is based on biological evidence rather than a black box.")
+    st.subheader("Final Interpretation")
+    st.write("This walkthrough demonstrates that the AI calculates probability based on the intensity of the raw data. By entering values for these specific features on the 'Main Diagnosis' page, users can perform accurate real-world analysis.")
