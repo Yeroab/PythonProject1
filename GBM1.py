@@ -9,7 +9,6 @@ st.set_page_config(page_title="GBM Diagnostic Suite", layout="wide")
 @st.cache_resource
 def load_assets():
     try:
-        # Loading core diagnostic and pathway models
         diag = joblib.load('gbm_diagnostic_model-1.pkl')
         pathways = joblib.load('gbm_pathways.pkl')
         return diag, pathways
@@ -22,7 +21,7 @@ diag, pathways = load_assets()
 # Sidebar Navigation
 st.sidebar.title("🧬 Main Menu")
 app_mode = st.sidebar.selectbox("Select Page", 
-    ["Main Diagnosis", "App Documentation", "Demo Walkthrough"])
+    ["Main Diagnosis", "App Documentation", "Interactive Demo Walkthrough"])
 
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Main Diagnosis":
@@ -31,40 +30,32 @@ if app_mode == "Main Diagnosis":
         model = diag['model']
         all_features = diag['features']
         
-        # Calculate Feature Importance to provide dynamic inputs
+        # Calculate Feature Importance
         importances = model.feature_importances_
         feat_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values(by='importance', ascending=False)
         top_10 = feat_df['feature'].head(10).tolist()
 
         with st.form("diag_form"):
             st.subheader("High-Impact Raw Biomarker Inputs")
-            st.info("Input raw expression values. The model sensitivity is highest for these specific markers.")
             cols = st.columns(2)
             user_inputs = {}
             for i, feat in enumerate(top_10):
                 with cols[i % 2]:
-                    # Defaulting to 100.0 as a baseline for raw data
                     user_inputs[feat] = st.number_input(f"{feat}", value=100.0)
             
             submitted = st.form_submit_button("Run Diagnostic")
             
             if submitted:
-                # Construct full feature vector (padding rest with 0.0)
                 full_input = {f: [user_inputs.get(f, 0.0)] for f in all_features}
                 input_df = pd.DataFrame(full_input)
-                
-                # Calculate probability
                 prob = model.predict_proba(input_df[all_features])[0][1]
                 
                 st.divider()
                 st.write(f"### Probability of GBM: {prob:.2%}")
-                
                 if prob > 0.5:
-                    st.error("Diagnostic Result: POSITIVE (High Risk Profile Detected)")
+                    st.error("Diagnostic Result: POSITIVE")
                 else:
-                    st.success("Diagnostic Result: NEGATIVE (Low Risk Profile Detected)")
-                
-                st.subheader("Feature Contribution Analysis")
+                    st.success("Diagnostic Result: NEGATIVE")
                 st.bar_chart(feat_df.head(10).set_index('feature'))
 
 # --- PAGE 2: DOCUMENTATION ---
@@ -77,17 +68,65 @@ elif app_mode == "App Documentation":
     Internally, the application utilizes a serialized pipeline that includes feature alignment and probability estimation. Once the user submits their raw data, the system constructs a complete feature vector, padding any dimensions with baseline values to maintain the structural integrity required by the XGBoost booster. The resulting output is a calculated probability score that reflects the likelihood of a GBM signature within the provided sample. Beyond simple binary classification, the suite integrates secondary validation pathways to provide a comprehensive biological overview of the patient profile. This ensures that the GUI functions not just as a calculator, but as a holistic portal for neuro-oncological research and diagnostic validation.
     """)
 
-# --- PAGE 3: DEMO WALKTHROUGH ---
-elif app_mode == "Demo Walkthrough":
-    st.title("🚀 Platform Walkthrough")
+# --- PAGE 3: INTERACTIVE DEMO ---
+elif app_mode == "Interactive Demo Walkthrough":
+    st.title("🚀 Interactive Platform Walkthrough")
     
-    st.subheader("Step 1: Identifying Key Biomarkers")
-    st.write("Navigate to the 'Main Diagnosis' page. You will notice that the system has already identified the top 10 biomarkers most critical to the model's decision-making process. These are not randomly chosen; they are the features with the highest Gini importance according to the XGBoost algorithm. By focusing on these specific inputs, you can observe how raw data shifts the diagnostic probability away from the baseline.")
+    st.subheader("Introduction")
+    st.write("This interactive demo simulates a clinical workflow. Follow the steps below to understand how raw data affects the AI's diagnostic confidence.")
+
+    st.markdown("---")
+    
+    # Step 1: Feature Importance
+    st.subheader("Step 1: Understanding Model Sensitivity")
+    st.write("Before inputting data, the system identifies the most important features. These are the biomarkers that 'move the needle' the most. In a raw data model, providing data for these 10 markers is more effective than providing data for 1,000 low-impact markers.")
     
     
 
-    st.subheader("Step 2: Entering Raw Data")
-    st.write("In the input fields, enter the raw expression levels obtained from laboratory analysis. Because this model is trained on raw values rather than normalized logs, the scale of these numbers is significant. If you leave these values at 0.0, the model may return a baseline bias, so ensure you are entering actual detected levels for the patient to see a dynamic confidence score.")
+    # Step 2: Interactive Simulation
+    st.subheader("Step 2: Interactive Data Simulation")
+    st.write("Click one of the buttons below to load pre-set values into the model and see the difference in probability results.")
+    
+    col1, col2 = st.columns(2)
+    
+    if diag:
+        model = diag['model']
+        all_features = diag['features']
+        importances = model.feature_importances_
+        feat_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values(by='importance', ascending=False)
+        top_10 = feat_df['feature'].head(10).tolist()
 
-    st.subheader("Step 3: Interpreting the Output")
-    st.write("Click 'Run Diagnostic' to generate the report. The system will provide a percentage-based confidence score. A score above 50% indicates a positive GBM signature. Below the result, a bar chart visualizes exactly how much weight each of your inputs carried in reaching that specific conclusion, allowing for transparent clinical verification and further investigation into specific genomic pathways.")
+        sim_data = None
+        
+        with col1:
+            if st.button("Load Healthy Control (Low Values)"):
+                # Simulate a healthy patient with low expression levels
+                sim_data = {f: [5.0] for f in all_features}
+                st.info("Loaded Low-Expression Profile")
+        
+        with col2:
+            if st.button("Load GBM Patient (High Values)"):
+                # Simulate a GBM patient with high expression in top features
+                sim_data = {f: [0.0] for f in all_features}
+                for f in top_10:
+                    sim_data[f] = [5000.0] # Set high values for top 10
+                st.warning("Loaded High-Expression Profile")
+
+        if sim_data:
+            st.markdown("### Step 3: Real-Time Prediction")
+            sim_df = pd.DataFrame(sim_data)
+            prob = model.predict_proba(sim_df[all_features])[0][1]
+            
+            st.write(f"**Calculated Probability:**")
+            st.progress(float(prob))
+            
+            if prob > 0.5:
+                st.error(f"Prediction: POSITIVE ({prob:.2%})")
+                st.write("Notice how the probability jumped. By providing high raw values for the 'Critical' biomarkers, we have triggered the model's GBM detection thresholds.")
+            else:
+                st.success(f"Prediction: NEGATIVE ({prob:.2%})")
+                st.write("Even though the model defaults to 98.5% with zeros, providing low-but-consistent 'Healthy' values allows the model to differentiate and lower its confidence.")
+
+    st.markdown("---")
+    st.subheader("Step 4: Final Clinical Interpretation")
+    st.write("Once the prediction is generated, the clinician uses the Feature Contribution chart (found on the Main Diagnosis page) to verify which specific gene or protein drove the result. This 'Explainable AI' approach ensures the diagnosis is based on biological evidence rather than a black box.")
