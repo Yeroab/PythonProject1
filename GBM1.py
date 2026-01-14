@@ -7,7 +7,6 @@ import io
 # Set page configuration
 st.set_page_config(page_title="GBM Diagnostic Suite", layout="wide")
 
-
 @st.cache_resource
 def load_assets():
     try:
@@ -17,7 +16,6 @@ def load_assets():
     except Exception as e:
         st.error(f"File Load Error: {e}")
         return None, None
-
 
 diag, pathways = load_assets()
 
@@ -70,12 +68,9 @@ if app_mode == "Main Diagnosis":
                 "To process multiple patients, download the template below, fill in the raw data, and upload the completed file.")
 
             # 1. GENERATE TEMPLATE
-            # Create a blank dataframe with the model's features as columns
             template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
-            # Add one example row of zeros
             template_df.loc[0] = ['Example_Patient_001'] + [0.0] * len(all_features)
 
-            # Convert to CSV for download
             buffer = io.BytesIO()
             template_df.to_csv(buffer, index=False)
             buffer.seek(0)
@@ -90,18 +85,13 @@ if app_mode == "Main Diagnosis":
 
             st.divider()
 
-            # 2. UPLOAD AND PROCESS
             uploaded_file = st.file_uploader("Upload your completed CSV file", type=["csv"])
 
             if uploaded_file:
                 bulk_df = pd.read_csv(uploaded_file)
-
-                # Validation: Check if all features exist in the uploaded file
                 missing_cols = [f for f in all_features if f not in bulk_df.columns]
 
                 if not missing_cols:
-                    # Run predictions for all rows
-                    # Ensure columns are in the exact order the model expects
                     probs = model.predict_proba(bulk_df[all_features])[:, 1]
                     bulk_df['GBM_Probability'] = probs
                     bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
@@ -110,102 +100,95 @@ if app_mode == "Main Diagnosis":
                     st.success(f"Successfully processed {len(bulk_df)} patient records.")
                     st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + top_10])
 
-                    # Optional: Download results
                     result_buffer = io.BytesIO()
                     bulk_df.to_csv(result_buffer, index=False)
                     result_buffer.seek(0)
                     st.download_button("Download Processed Results", data=result_buffer, file_name="gbm_results.csv",
                                        mime="text/csv")
                 else:
-                    st.error(
-                        f"The uploaded file is missing {len(missing_cols)} required columns. Please use the provided template.")
+                    st.error(f"The uploaded file is missing {len(missing_cols)} required columns.")
                     with st.expander("Show missing columns"):
                         st.write(missing_cols)
-                        # --- PAGE 2: DOCUMENTATION ---
-            elif app_mode == "App Documentation":
-                        st.title("  Documentation")
-                        st.write("""
-                            The Glioblastoma Multiforme (GBM) Diagnostic is a machine learning-powered clinical support tool used to analyze raw genomic, proteomic and metabolomic biomarkers according to their expression levels. The model relies on an XGBoost classifier trained on raw data to identify patterns associated with GBM. When a user interacts with the interface, the system dynamically extracts the most influential features from the model to ensure that the user provides values for the biomarkers that hold the highest predictive weight, removing the low significance features. The GUI creates an understandable bridge to interpret omics data for clinical use. 
 
-                            """)
-                        st.write("""
-                            Once the user submits their raw data, the system constructs a complete feature vector, padding any dimensions with baseline values to maintain the structural integrity required by the XGBoost booster. The resulting output is a calculated probability score that reflects the likelihood of a GBM within the provided sample. Beyond simple binary classification, the model integrates secondary validation to provide a complete overview of the patient profile..
-                            """)
+# --- PAGE 2: DOCUMENTATION ---
+elif app_mode == "App Documentation":
+    st.title("Documentation")
+    st.write("""
+        The Glioblastoma Multiforme (GBM) Diagnostic is a machine learning-powered clinical support tool used to analyze raw genomic, proteomic and metabolomic biomarkers according to their expression levels. The model relies on an XGBoost classifier trained on raw data to identify patterns associated with GBM. When a user interacts with the interface, the system dynamically extracts the most influential features from the model to ensure that the user provides values for the biomarkers that hold the highest predictive weight, removing the low significance features. The GUI creates an understandable bridge to interpret omics data for clinical use. 
+        """)
+    st.write("""
+        Once the user submits their raw data, the system constructs a complete feature vector, padding any dimensions with baseline values to maintain the structural integrity required by the XGBoost booster. The resulting output is a calculated probability score that reflects the likelihood of a GBM within the provided sample. Beyond simple binary classification, the model integrates secondary validation to provide a complete overview of the patient profile..
+        """)
 
-                    # --- PAGE 3: INTERACTIVE DEMO ---
-            elif app_mode == "Interactive Demo Walkthrough":
-                    st.title(" Interactive Platform Walkthrough")
+# --- PAGE 3: INTERACTIVE DEMO ---
+elif app_mode == "Interactive Demo Walkthrough":
+    st.title(" Interactive Platform Walkthrough")
 
-                    st.subheader("Introduction")
-                    st.write(
-                        "Follow the steps below for a clinical workflow and see how specific feature values change the diagnostic output.")
+    st.subheader("Introduction")
+    st.write(
+        "Follow the steps below for a clinical workflow and see how specific feature values change the diagnostic output.")
 
-                    st.markdown("---")
+    st.markdown("---")
 
-                    if diag:
-                        model = diag['model']
-                        all_features = diag['features']
-                        importances = model.feature_importances_
-                        feat_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values(
-                            by='importance', ascending=False)
-                        top_10 = feat_df['feature'].head(10).tolist()
+    if diag:
+        model = diag['model']
+        all_features = diag['features']
+        importances = model.feature_importances_
+        feat_df = pd.DataFrame({'feature': all_features, 'importance': importances}).sort_values(
+            by='importance', ascending=False)
+        top_10 = feat_df['feature'].head(10).tolist()
 
-                        # Step 1: Selection
-                        st.subheader("Select a Clinical Case Profile")
-                        col1, col2 = st.columns(2)
+        # Step 1: Selection
+        st.subheader("Select a Clinical Case Profile")
+        col1, col2 = st.columns(2)
 
-                        sim_data = None
-                        profile_label = ""
+        sim_data = None
+        profile_label = ""
 
-                        with col1:
-                            if st.button("Simulate: Healthy Control"):
-                                profile_label = "Healthy Control"
-                                sim_data = {f: [5.0] for f in all_features}
+        with col1:
+            if st.button("Simulate: Healthy Control"):
+                profile_label = "Healthy Control"
+                sim_data = {f: [5.0] for f in all_features}
 
-                        with col2:
-                            if st.button("Simulate: GBM-Positive Patient"):
-                                profile_label = "GBM-Positive Patient"
-                                sim_data = {f: [0.0] for f in all_features}
-                                for f in top_10:
-                                    sim_data[f] = [5000.0]
+        with col2:
+            if st.button("Simulate: GBM-Positive Patient"):
+                profile_label = "GBM-Positive Patient"
+                sim_data = {f: [0.0] for f in all_features}
+                for f in top_10:
+                    sim_data[f] = [5000.0]
 
-                        if sim_data:
-                            st.info(f"Active Simulation: {profile_label}")
+        if sim_data:
+            st.info(f"Active Simulation: {profile_label}")
 
-                            # Step 2: Show Feature List
-                            st.subheader(" Feature and Value List")
-                            st.write(
-                                "The following biomarkers and their raw values are being sent to the model for this simulation:")
+            # Step 2: Show Feature List
+            st.subheader(" Feature and Value List")
+            st.write(
+                "The following biomarkers and their raw values are being sent to the model for this simulation:")
 
-                            # Prepare the list/table of features and values
-                            display_list = []
-                            for f in top_10:
-                                display_list.append({"Biomarker (Feature)": f, "Raw Value": sim_data[f][0]})
+            display_list = []
+            for f in top_10:
+                display_list.append({"Biomarker (Feature)": f, "Raw Value": sim_data[f][0]})
 
-                            # Displaying as a clean table
-                            st.table(pd.DataFrame(display_list))
+            st.table(pd.DataFrame(display_list))
 
-                            # Step 3: Result
-                            st.subheader(" Real-Time Diagnostic Result")
-                            sim_df = pd.DataFrame(sim_data)
-                            prob = model.predict_proba(sim_df[all_features])[0][1]
+            # Step 3: Result
+            st.subheader(" Real-Time Diagnostic Result")
+            sim_df = pd.DataFrame(sim_data)
+            prob = model.predict_proba(sim_df[all_features])[0][1]
 
-                            st.write(f"** Confidence Score:**")
-                            st.progress(float(prob))
+            st.write(f"** Confidence Score:**")
+            st.progress(float(prob))
 
-                            if prob > 0.5:
-                                st.error(f"Prediction: POSITIVE ({prob:.2%})")
-                                st.write(
-                                    "The high raw values assigned to the critical biomarkers above triggered a Positive diagnosis.")
-                            else:
-                                st.success(f"Prediction: NEGATIVE ({prob:.2%})")
-                                st.write(
-                                    "The low raw values assigned to the biomarkers represent a healthy profile, resulting in a Negative diagnosis.")
+            if prob > 0.5:
+                st.error(f"Prediction: POSITIVE ({prob:.2%})")
+                st.write(
+                    "The high raw values assigned to the critical biomarkers above triggered a Positive diagnosis.")
+            else:
+                st.success(f"Prediction: NEGATIVE ({prob:.2%})")
+                st.write(
+                    "The low raw values assigned to the biomarkers represent a healthy profile, resulting in a Negative diagnosis.")
 
-                    st.markdown("---")
-                    st.subheader("Final Interpretation")
-                    st.write(
-                        "This walkthrough demonstrates that the AI calculates probability based on the intensity of the raw data. By entering values for these specific features on the 'Main Diagnosis' page, users can perform accurate real-world analysis.")
-
-
-
+    st.markdown("---")
+    st.subheader("Final Interpretation")
+    st.write(
+        "This walkthrough demonstrates that the AI calculates probability based on the intensity of the raw data. By entering values for these specific features on the 'Main Diagnosis' page, users can perform accurate real-world analysis.")
