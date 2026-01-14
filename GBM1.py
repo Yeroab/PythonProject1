@@ -57,7 +57,7 @@ if app_mode == "Main Diagnosis":
                 if submitted:
                     # Create full feature row (fill missing features with 0)
                     full_input = {f: [user_inputs.get(f, 0.0)] for f in features}
-                    input_df = pd.DataFrame(full_data)
+                    input_df = pd.DataFrame(full_input)
 
                     prediction = model_obj.predict(input_df[features])[0]
                     prob = model_obj.predict_proba(input_df[features])[0][1]
