@@ -5,7 +5,7 @@ import numpy as np
 import io
 
 # Set page configuration
-st.set_page_config(page_title="GBM Diagnostic Suite", layout="wide")
+st.set_page_config(page_title="GBM-Omics", layout="wide")
 
 
 @st.cache_resource
@@ -24,10 +24,10 @@ diag, pathways = load_assets()
 # Sidebar Navigation
 st.sidebar.title(" Main Menu")
 app_mode = st.sidebar.selectbox("Select Page",
-                                ["Main Diagnosis", "App Documentation", "Interactive Demo Walkthrough"])
+                                ["Upload your own omics data", "App Documentation", "Interactive Demo Walkthrough through dummy data"])
 
 # --- PAGE 1: MAIN DIAGNOSIS ---
-if app_mode == "Main Diagnosis":
+if app_mode == "Upload your own omics data":
     st.title(" GBM Raw Data Analysis")
     if diag:
         model = diag['model']
@@ -39,7 +39,7 @@ if app_mode == "Main Diagnosis":
                                                                                                  ascending=False)
         top_10 = feat_df['feature'].head(10).tolist()
 
-        tab1, tab2 = st.tabs(["Manual Entry", "Bulk Analysis (CSV)"])
+        tab1, tab2 = st.tabs(["Enter Omics Sample Value (Manual Entry)", "Bulk Analysis for Mulitiple Omics Data (CSV)"])
 
         with tab1:
             with st.form("diag_form"):
@@ -114,14 +114,55 @@ if app_mode == "Main Diagnosis":
 
 # --- DOCUMENTATION AND DEMO PAGES (INDENTED CORRECTLY) ---
 elif app_mode == "App Documentation":
-    st.title("  Documentation")
+    st.title(" App Documentation & User Guide")
     st.write("""
-        The Glioblastoma Multiforme (GBM) Diagnostic is a machine learning-powered clinical support tool used to analyze raw genomic, proteomic and metabolomic biomarkers according to their expression levels. The model relies on an XGBoost classifier trained on raw data to identify patterns associated with GBM. When a user interacts with the interface, the system dynamically extracts the most influential features from the model to ensure that the user provides values for the biomarkers that hold the highest predictive weight, removing the low significance features. The GUI creates an understandable bridge to interpret omics data for clinical use. 
+        Welcome to the documentation tab of GBM_Omics. This guide provides a step-by-step walkthrough 
+        of the interface workflow to help you navigate the platform effectively.
+    """)
 
-        """)
+
+    st.divider()
+
+    # --- GUI STEP BY STEP GUIDE ---
+
+    st.header("1. Select an input prefrence section and Upload your data")
     st.write("""
-        Once the user submits their raw data, the system constructs a complete feature vector, padding any dimensions with baseline values to maintain the structural integrity required by the XGBoost booster. The resulting output is a calculated probability score that reflects the likelihood of a GBM within the provided sample. Beyond simple binary classification, the model integrates secondary validation to provide a complete overview of the patient profile..
-        """)
+        Navigate to the **'Upload your own omics data'** page. You will see two primary methods for entry:
+        * **Manual Entry Tab:** Best for checking a single patient profile by typing in values for the highly significant biomarkers.
+        * **Bulk Analysis Tab:** Best for processing large cohorts using a spreadsheet.
+    """)
+
+    st.header("2. Performing a Manual Diagnosis")
+    st.write("""
+        1. Locate the 'High-Impact Raw Biomarker Inputs' section.
+        2. Enter the raw expression values for the top 10 biomarkers identified by the model.
+        3. Click the 'Run Diagnostic' button.
+        4. Review the 'Probability Score' and the 'Biomarker Impact Chart' to see which specific inputs influenced the result.
+    """)
+
+    st.header("3. Bulk Processing using CSV file")
+    st.write("""
+        1. Switch to the 'Bulk Analysis' tab.
+        2. Click 'Download CSV Template' to ensure your data is formatted correctly for the model.
+        3. Fill the template with your patient IDs and corresponding omics data.
+        4. Upload the file using the 'File Uploader'. 
+        5. The system will automatically generate a 'Comparative Risk Analysis' chart and a detailed results table.
+    """)
+
+    st.header("Step 4: Interactive Demo walkthrough")
+    st.write("""
+        If you want to test the system behavior without your own data using dummy data:
+        1. Select 'Interactive Demo Walkthrough' from the sidebar.
+        2. Choose a pre-set clinical profile (e.g., 'Healthy Control' or 'GBM-Positive').
+        3. Observe how the change in raw values directly shifts the **Confidence Score** and output.
+    """)
+
+    st.header("Step 5: Interpreting Results")
+    st.write("""
+        Probability > 50%: Indicates a high likelihood of a GBM-positive profile (displayed in Red).
+        Probability < 50%: Indicates a healthy or negative profile (displayed in Green).
+        Impact Scores:** Higher bars in the charts indicate that the specific biomarker had a stronger influence on that patient's classification.
+    """)
 
 
 
@@ -196,5 +237,5 @@ elif app_mode == "Interactive Demo Walkthrough":
     st.markdown("---")
     st.subheader("Final Interpretation")
     st.write(
-        "This walkthrough demonstrates that the modeI calculates probability based on the intensity of the raw data. By entering values for these specific features on the 'Main Diagnosis' page, users can perform accurate real-world analysis.")
+        "This walkthrough demonstrates that the modeI calculates probability based on the intensity of the raw data. By entering values for these specific features, users can perform accurate real-world analysis.")
 
