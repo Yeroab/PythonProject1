@@ -28,7 +28,7 @@ app_mode = st.sidebar.selectbox("Select Page",
 
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Upload your own omics data":
-    st.title(" GBM Raw Data Analysis")
+    st.title(" GBM_Omics Analysis Page for User Data")
     if diag:
         model = diag['model']
         all_features = diag['features']
