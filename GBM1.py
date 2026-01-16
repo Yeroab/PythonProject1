@@ -24,7 +24,7 @@ diag, pathways = load_assets()
 # Sidebar Navigation
 st.sidebar.title(" Main Menu")
 app_mode = st.sidebar.selectbox("Select Page",
-                                ["Upload your own omics data", "App Documentation", "Interactive Demo Walkthrough through dummy data"])
+                                ["Upload your own omics data", "App Documentation", "Interactive Demo Walkthrough"])
 
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Upload your own omics data":
