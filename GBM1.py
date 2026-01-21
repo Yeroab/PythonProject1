@@ -5,7 +5,7 @@ import numpy as np
 import io
 
 # Set page configuration
-st.set_page_config(page_title="GBM-Omics", layout="wide")
+st.set_page_config(page_title="MulitNet-Ai", layout="wide")
 
 
 @st.cache_resource
@@ -28,7 +28,7 @@ app_mode = st.sidebar.selectbox("Select Page",
 
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Upload your own omics data":
-    st.title(" GBM_Omics User Driven Interface")
+    st.title(" MultiNet-Ai User Driven Interface")
     if diag:
         model = diag['model']
         all_features = diag['features']
