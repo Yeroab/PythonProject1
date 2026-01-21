@@ -3,6 +3,37 @@ import joblib
 import pandas as pd
 import numpy as np
 import io
+# --- FORCE BLUE THEME ---
+st.markdown("""
+    <style>
+        /* 1. Change the top header bar to Blue */
+        header[data-testid="stHeader"] {
+            background-color: #1f77b4;
+        }
+
+        /* 2. Change the Sidebar to Dark Blue/Black */
+        [data-testid="stSidebar"] {
+            background-color: #002b36 !important;
+        }
+
+        /* 3. Change all primary buttons to Blue */
+        div.stButton > button:first-child {
+            background-color: #1f77b4;
+            color: white;
+            border: none;
+        }
+
+        /* 4. Change the background of the main area to a very light blue tint */
+        .stApp {
+            background-color: #f0f8ff;
+        }
+
+        /* 5. Change the text of the sidebar to white for readability */
+        [data-testid="stSidebar"] * {
+            color: white !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Set page configuration
 st.set_page_config(page_title="MulitNet-Ai", layout="wide")
