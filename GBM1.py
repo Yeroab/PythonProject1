@@ -10,7 +10,7 @@ st.markdown("""
         /* 1. THE ACTUAL FULL PAGE BACKGROUND */
         /* Targets every possible container to force the blue color */
         .stApp, .stMain, [data-testid="stAppViewContainer"], .main {
-            background-color: #e6f3ff !important;
+            background-color: #89cff1 !important;
         }
 
         /* 2. TOP HEADER BAR */
