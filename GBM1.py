@@ -93,10 +93,14 @@ def load_assets():
 diag, pathways = load_assets()
 
 # Sidebar Navigation
+# Sidebar Navigation
 st.sidebar.title(" Main Menu")
-app_mode = st.sidebar.selectbox("Select Page",
-                                ["Upload your own omics data", "App Documentation", "Interactive Demo Walkthrough"])
 
+# Changed selectbox to radio for a vertical list
+app_mode = st.sidebar.radio(
+    "Select Page",
+    ["Upload your own omics data", "App Documentation", "Interactive Demo Walkthrough"]
+)
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Upload your own omics data":
     st.title(" MultiNet-Ai User Driven Interface")
