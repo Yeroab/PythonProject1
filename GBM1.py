@@ -54,7 +54,7 @@ st.markdown("""
             color: #002b36 !important;
             padding-top: 10px;
         }
-    </style>
+    
 """, unsafe_allow_html=True)
         /* 1. Top Header Bar */
         header[data-testid="stHeader"] {
