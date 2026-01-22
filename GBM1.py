@@ -6,6 +6,7 @@ import io
 # --- FORCE BLUE THEME ---
 # --- FORCE BLUE THEME ---
 # --- FORCE BLUE THEME ---
+# --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
         /* 1. THE WHOLE APP BACKGROUND */
@@ -13,47 +14,67 @@ st.markdown("""
         .stApp {
             background-color: #e6f3ff !important;
         }
-        /* 1. TOP HEADER & SIDEBAR */
-        header[data-testid="stHeader"] { background-color: #1f77b4 !important; }
-        section[data-testid="stSidebar"] { background-color: #0d3b4c !important; }
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: white !important; }
 
-        /* 2. THE MAIN BACKGROUND */
-        .stApp { background-color: #f0f8ff !important; }
+        /* 2. TOP HEADER BAR */
+        header[data-testid="stHeader"] {
+            background-color: #1f77b4 !important;
+        }
 
-        /* 3. THE "BLUE BOX" FIX FOR NUMBER INPUTS */
-        /* This targets the container background specifically */
-        div[data-testid="stNumberInput"] > div {
-            background-color: #e3f2fd !important;
+        /* 3. SIDEBAR - Navy Blue */
+        section[data-testid="stSidebar"] {
+            background-color: #0d3b4c !important;
+        }
+
+        /* Sidebar Text to White */
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+            color: white !important;
+        }
+
+        /* 4. MANUAL ENTRY: Input Box Background */
+        /* Using a slightly darker blue than the background so they stand out */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            background-color: #cce6ff !important; 
             border-radius: 8px !important;
+            border: 1px solid #1f77b4 !important;
         }
 
-        /* This targets the internal input area */
-        div[data-baseweb="input"] {
-            background-color: #e3f2fd !important;
-            border: 1px solid #add8e6 !important;
-        }
-
-        /* 4. MANUAL ENTRY: +/- Buttons */
+        /* Style the +/- buttons inside the input boxes */
         button[data-testid="stNumberInputStepUp"], 
         button[data-testid="stNumberInputStepDown"] {
-            background-color: #add8e6 !important;
-            color: #0d3b4c !important;
+            background-color: #1f77b4 !important;
+            color: white !important;
             border-radius: 4px !important;
         }
 
-        /* 5. RUN DIAGNOSTIC BUTTON - Light Blue */
+        /* 5. RUN DIAGNOSTIC BUTTON */
         div.stButton > button {
-            background-color: #add8e6 !important;
-            color: #0d3b4c !important;
-            border: 1px solid #90cbd3 !important;
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border: none !important;
             font-weight: bold !important;
             width: 100% !important;
+            border-radius: 6px !important;
+        }
+        
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
         }
 
         /* 6. TABS & LABELS */
-        div[data-baseweb="tab-highlight"] { background-color: #1f77b4 !important; }
-        .stNumberInput label p { color: #0d3b4c !important; font-weight: bold !important; }
+        div[data-baseweb="tab-highlight"] {
+            background-color: #1f77b4 !important;
+        }
+
+        button[aria-selected="true"] p {
+            color: #1f77b4 !important;
+            font-weight: bold !important;
+        }
+
+        /* Biomarker Names (AACS_prot, etc.) */
+        .stNumberInput label p {
+            color: #0d3b4c !important;
+            font-weight: bold !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 # Set page configuration
