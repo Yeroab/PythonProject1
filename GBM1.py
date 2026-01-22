@@ -6,31 +6,98 @@ import io
 # --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* 1. Change the top header bar to Blue */
+        /* 1. Top Header Bar */
         header[data-testid="stHeader"] {
-            background-color: #1f77b4;
+            background-color: #1f77b4 !important;
         }
 
-        /* 2. Change the Sidebar to Dark Blue/Black */
-        [data-testid="stSidebar"] {
+        /* 2. Sidebar Background */
+        section[data-testid="stSidebar"] {
             background-color: #002b36 !important;
         }
 
-        /* 3. Change all primary buttons to Blue */
-        div.stButton > button:first-child {
-            background-color: #1f77b4;
-            color: white;
-            border: none;
-        }
-
-        /* 4. Change the background of the main area to a very light blue tint */
-        .stApp {
-            background-color: #f0f8ff;
-        }
-
-        /* 5. Change the text of the sidebar to white for readability */
-        [data-testid="stSidebar"] * {
+        /* 3. Sidebar Text: Labels, Titles, and Paragraphs */
+        [data-testid="stSidebar"] h1, 
+        [data-testid="stSidebar"] label, 
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] .stMarkdown {
             color: white !important;
+        }
+
+        /* 4. Fix Sidebar Selectbox (The white box in your image) */
+        /* This targets the text inside the selection box */
+        div[data-testid="stSelectbox"] div[role="button"] {
+            color: #002b36 !important; /* Keep text dark inside the white box for contrast */
+        }
+
+        /* 5. Buttons: Base State */
+        div.stButton > button {
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border: 1px solid #1f77b4 !important;
+            border-radius: 4px;
+            width: 100%; /* Optional: matches your input width */
+        }
+
+        /* 6. Buttons: Hover State */
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
+            border-color: #155a8a !important;
+            color: white !important;
+        }
+
+        /* 7. Main Area Background */
+        .stApp {
+            background-color: #f0f8ff !important;
+        }
+
+        /* 8. Fix Input Labels in Main Area (AACS_prot, etc.) */
+        /* If you want these to be a specific color too */
+        .stNumberInput label {
+            color: #002b36 !important;
+            font-weight: bold !important;
+        }
+
+        /* --- 2. TABS CUSTOMIZATION (Manual Entry / Bulk Analysis) --- */
+        /* Target the tab bar */
+        button[data-baseweb="tab"] {
+            color: #555555 !important; /* Inactive tab text */
+        }
+
+        /* Target the active (selected) tab text */
+        button[aria-selected="true"] p {
+            color: #1f77b4 !important;
+            font-weight: bold !important;
+        }
+
+        /* Target the underline of the active tab */
+        div[data-baseweb="tab-highlight"] {
+            background-color: #1f77b4 !important;
+        }
+
+        /* --- 3. BUTTONS (Refined for 'Run Diagnostic') --- */
+        div.stButton > button {
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border: none !important;
+            padding: 0.5rem 2rem !important;
+            transition: all 0.3s ease !important;
+        }
+
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        /* --- 4. NUMBER INPUT BOXES --- */
+        /* Changes the highlight color when you click into an input box */
+        div[data-baseweb="input"] {
+            border-color: transparent !important;
+        }
+        
+        div[data-baseweb="input"]:focus-within {
+            border-color: #1f77b4 !important;
         }
     </style>
 """, unsafe_allow_html=True)
