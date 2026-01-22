@@ -9,8 +9,7 @@ st.markdown("""
 
     st.markdown("""
     <style>
-        /* --- Manual Entry Button Customization --- */
-        /* Targets the 'Run Diagnostic' button specifically */
+      /* --- Manual Entry Button Customization --- */
         div.stButton > button {
             background-color: #1f77b4 !important;
             color: white !important;
