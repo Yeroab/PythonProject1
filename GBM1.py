@@ -118,7 +118,7 @@ if app_mode == "Upload your own omics data":
 
         with tab1:
             with st.form("diag_form"):
-                st.subheader("High-Impact Raw Biomarker Inputs")
+                st.subheader("Input abundance score in raw value")
                 cols = st.columns(2)
                 user_inputs = {}
                 for i, feat in enumerate(top_10):
@@ -152,9 +152,9 @@ if app_mode == "Upload your own omics data":
 
                     st.write(f"### Probability of GBM: {prob:.2%}")
                     if prob > 0.5:
-                        st.error("Diagnostic Result: POSITIVE")
+                        st.error("Diagnostic Result: Postive")
                     else:
-                        st.success("Diagnostic Result: NEGATIVE")
+                        st.success("Diagnostic Result: Negative")
 
         with tab2:
             st.subheader("Bulk Patient Processing")
@@ -202,6 +202,11 @@ elif app_mode == "App Documentation":
 
     st.header("1. Select an input prefrence section and Upload your data")
     st.write("""
+        1. Reads Multiomics abundance score.
+        2. Filters relevant features according to their importance. 
+        3. Excludes less relevant features. 
+        4. Demonstrates GBM risk factor (Positive or Negative).
+        5. Returns sample specific visualization of the importance of relevant features. 
         Navigate to the **'Upload your own omics data'** page. You will see two primary methods for entry:
         * **Manual Entry Tab:** Best for checking a single patient profile by typing in values for the highly significant biomarkers.
         * **Bulk Analysis Tab:** Best for processing large cohorts using a spreadsheet.
@@ -209,8 +214,8 @@ elif app_mode == "App Documentation":
 
     st.header("2. Performing a Manual Diagnosis")
     st.write("""
-        1. Locate the 'High-Impact Raw Biomarker Inputs' section.
-        2. Enter the raw expression values for the top 10 biomarkers identified by the model.
+        1. Locate the 'Input abundance score in raw value' section.
+        2. Enter the raw abundance values for the top 10 biomarkers identified by the model.
         3. Click the 'Run Diagnostic' button.
         4. Review the 'Probability Score' and the 'Biomarker Impact Chart' to see which specific inputs influenced the result.
     """)
