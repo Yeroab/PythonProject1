@@ -57,7 +57,8 @@ import io
             color: #002b36 !important;
             font-weight: bold !important;
         }
-
+    </style>
+""", unsafe_allow_html=True)
         /* --- 2. TABS CUSTOMIZATION (Manual Entry / Bulk Analysis) --- */
         /* Target the tab bar */
         button[data-baseweb="tab"] {
