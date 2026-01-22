@@ -33,7 +33,28 @@ st.markdown("""
         .stApp {
             background-color: #f0f8ff !important;
         }
+        /* 2. MANUAL ENTRY: Input Box Background (AACS, etc.) */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            background-color: #e3f2fd !important; /* Very light blue */
+            border-radius: 8px !important;
+            border: 1px solid #add8e6 !important;
+        }
 
+        /* 3. MANUAL ENTRY: +/- Buttons */
+        button[data-testid="stNumberInputStepUp"], 
+        button[data-testid="stNumberInputStepDown"] {
+            background-color: #add8e6 !important; /* Light blue */
+            color: #0d3b4c !important; /* Dark navy icons */
+            border-radius: 4px !important;
+        }
+
+        /* 4. RUN DIAGNOSTIC BUTTON - Light Blue */
+        div.stButton > button {
+            background-color: #add8e6 !important;
+            color: #0d3b4c !important;
+            border: 1px solid #90cbd3 !important;
+            font-weight: bold !important;
+            width: 100% !important;
         /* 4. TABS CUSTOMIZATION (Manual Entry / Bulk Entry) */
         /* Active Tab Underline */
         div[data-baseweb="tab-highlight"] {
@@ -54,7 +75,7 @@ st.markdown("""
         /* 5. GLOBAL BUTTON STYLE (Manual & Bulk) */
         div.stButton > button {
             background-color: #1f77b4 !important;
-            color: white !important;
+            color: blue !important;
             border: 1px solid #1f77b4 !important;
             border-radius: 6px !important;
             padding: 0.5rem 2rem !important;
