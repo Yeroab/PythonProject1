@@ -76,7 +76,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 # Set page configuration
-st.set_page_config(page_title="MulitNet-Ai", layout="wide")
+st.set_page_config(page_title="MulitNet-AI", layout="wide")
 
 
 @st.cache_resource
@@ -103,7 +103,7 @@ app_mode = st.sidebar.radio(
 )
 # --- PAGE 1: MAIN DIAGNOSIS ---
 if app_mode == "Upload your own omics data":
-    st.title(" MultiNet-Ai User Driven Interface")
+    st.title(" MultiNet-AI User Driven Interface")
     if diag:
         model = diag['model']
         all_features = diag['features']
@@ -156,11 +156,11 @@ if app_mode == "Upload your own omics data":
                     else:
                         st.success("Diagnostic Result: Negative")
 
-        with tab2:
+       with tab2:
             st.subheader("Bulk Patient Processing")
             st.write("Process multiple patients via CSV upload.")
 
-            # Generate Template
+            # (Template generation code remains the same...)
             template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
             template_df.loc[0] = ['Example_Patient_001'] + [0.0] * len(all_features)
             buffer = io.BytesIO()
@@ -174,11 +174,36 @@ if app_mode == "Upload your own omics data":
             if uploaded_file:
                 bulk_df = pd.read_csv(uploaded_file)
                 if all(f in bulk_df.columns for f in all_features):
+                    # 1. Run Predictions
                     probs = model.predict_proba(bulk_df[all_features])[:, 1]
                     bulk_df['GBM_Probability'] = probs
                     bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
                         lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
 
+                    # 2. NEW: Calculate Impact Scores for the CSV Export
+                    # Impact = Global Importance * User Input Value
+                    impact_export_df = bulk_df[['Patient_ID']].copy()
+                    
+                    # Create a dictionary of global importances for quick lookup
+                    importance_map = dict(zip(feat_df['feature'], feat_df['importance']))
+                    
+                    for feat in all_features:
+                        # Calculate impact for every feature for every patient
+                        impact_export_df[f"{feat}_impact"] = bulk_df[feat] * importance_map.get(feat, 0)
+
+                    # 3. Create Download Button for Impact Scores
+                    impact_buffer = io.BytesIO()
+                    impact_export_df.to_csv(impact_buffer, index=False)
+                    impact_buffer.seek(0)
+                    
+                    st.download_button(
+                        label=" Download Full Impact Scores CSV",
+                        data=impact_buffer,
+                        file_name="gbm_patient_impact_scores.csv",
+                        mime="text/csv"
+                    )
+
+                    # 4. Display Visualizations (Existing code)
                     st.subheader(" Comparative Risk Analysis")
                     st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
 
@@ -186,12 +211,11 @@ if app_mode == "Upload your own omics data":
                     st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + top_10])
                 else:
                     st.error("Missing required columns in CSV.")
-
 # --- DOCUMENTATION AND DEMO PAGES (INDENTED CORRECTLY) ---
 elif app_mode == "App Documentation":
     st.title(" App Documentation & User Guide")
     st.write("""
-        Welcome to the documentation tab of GBM_Omics. This guide provides a step-by-step walkthrough 
+        Welcome to the documentation tab of MultiNet_AI. This guide provides a step-by-step walkthrough 
         of the interface workflow to help you navigate the platform effectively.
     """)
 
