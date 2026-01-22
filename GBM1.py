@@ -156,12 +156,12 @@ if app_mode == "Upload your own omics data":
                     else:
                         st.success("Diagnostic Result: Negative")
 
-         with tab2:
-                st.subheader("Bulk Patient Processing")
-                st.write("Process multiple patients via CSV upload.")
+        with tab2:
+            st.subheader("Bulk Patient Processing")
+            st.write("Process multiple patients via CSV upload.")
 
               # (Template generation code remains the same...)
-                    template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
+            template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
             template_df.loc[0] = ['Example_Patient_001'] + [0.0] * len(all_features)
             buffer = io.BytesIO()
             template_df.to_csv(buffer, index=False)
