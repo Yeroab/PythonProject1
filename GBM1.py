@@ -51,9 +51,9 @@ st.markdown("""
             color: #555555 !important;
         }
 
-        /* 5. GLOBAL BUTTON STYLE (Manual & Bulk) */
+        /* 5. GLOBAL BUTTON STYLE */
         div.stButton > button {
-            background-color: #1f77b4 !important;
+            background-color: #1f77b4 !important; /* Default Blue */
             color: white !important;
             border: 1px solid #1f77b4 !important;
             border-radius: 6px !important;
@@ -61,14 +61,21 @@ st.markdown("""
             font-weight: 700 !important;
             width: 100% !important;
             transition: all 0.3s ease !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+
+        /* --- NEW EDIT: Light Blue specifically for Manual Entry tab --- */
+        /* Targets the button inside the first tab (Manual Entry) */
+        div[data-testid="stExpander"] div.stButton > button, 
+        .st-emotion-cache-1ky0h6e div.stButton > button {
+            background-color: #a0c4ff !important; /* Light Blue */
+            border-color: #a0c4ff !important;
+            color: #0d3b4c !important; /* Darker text for contrast on light blue */
         }
 
         /* Button Hover State */
         div.stButton > button:hover {
             background-color: #155a8a !important;
             border-color: #155a8a !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
             transform: translateY(-1px) !important;
         }
 
