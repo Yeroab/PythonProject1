@@ -4,57 +4,8 @@ import pandas as pd
 import numpy as np
 import io
 # --- FORCE BLUE THEME ---
-st.markdown("""
+ st.markdown("""
     <style>
-
-    st.markdown("""
-    <style>
-      /* --- Manual Entry Button Customization --- */
-        div.stButton > button {
-            background-color: #1f77b4 !important;
-            color: white !important;
-            border-radius: 6px !important;
-            border: 1px solid #1f77b4 !important;
-            font-weight: 700 !important;
-            height: 3em !important;
-            width: 100% !important;
-            margin-top: 10px !important;
-            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1) !important;
-        }
-
-        /* Hover effect for the Run button */
-        div.stButton > button:hover {
-            background-color: #155a8a !important;
-            border-color: #155a8a !important;
-            transform: translateY(-1px);
-        }
-
-        /* Active click effect */
-        div.stButton > button:active {
-            transform: translateY(1px);
-        }
-
-        /* --- Input Controls --- */
-        /* Style the increment/decrement buttons (+ and -) in number inputs */
-        button[data-testid="stNumberInputStepUp"], 
-        button[data-testid="stNumberInputStepDown"] {
-            background-color: transparent !important;
-            color: #1f77b4 !important;
-        }
-
-        /* --- Tab Alignment --- */
-        /* Ensures the active tab (Manual Entry) matches the button color */
-        div[data-baseweb="tab-highlight"] {
-            background-color: #1f77b4 !important;
-        }
-
-        /* --- Result Area Refinement --- */
-        /* Style the Probability text to look professional */
-        .stMarkdown h3 {
-            color: #002b36 !important;
-            padding-top: 10px;
-        }
-    
 """, unsafe_allow_html=True)
         /* 1. Top Header Bar */
         header[data-testid="stHeader"] {
