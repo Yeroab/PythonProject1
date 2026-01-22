@@ -5,37 +5,31 @@ import numpy as np
 import io
 # --- FORCE BLUE THEME ---
 # --- FORCE BLUE THEME ---
+# --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* 1. TOP HEADER BAR */
-        header[data-testid="stHeader"] {
-            background-color: #1f77b4 !important;
-        }
+        /* 1. TOP HEADER & SIDEBAR */
+        header[data-testid="stHeader"] { background-color: #1f77b4 !important; }
+        section[data-testid="stSidebar"] { background-color: #0d3b4c !important; }
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: white !important; }
 
-        /* 2. SIDEBAR - Navy Blue */
-        section[data-testid="stSidebar"] {
-            background-color: #0d3b4c !important;
-        }
+        /* 2. THE MAIN BACKGROUND */
+        .stApp { background-color: #f0f8ff !important; }
 
-        /* Sidebar Text to White */
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
-            color: white !important;
-        }
-
-        /* 3. MAIN AREA BACKGROUND */
-        .stApp {
-            background-color: #f0f8ff !important;
-        }
-
-        /* --- NEW: MANUAL ENTRY INPUT BACKGROUND (BLUE) --- */
-        /* This targets the actual box where numbers are typed */
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            background-color: #e3f2fd !important; /* Light blue background */
+        /* 3. THE "BLUE BOX" FIX FOR NUMBER INPUTS */
+        /* This targets the container background specifically */
+        div[data-testid="stNumberInput"] > div {
+            background-color: #e3f2fd !important;
             border-radius: 8px !important;
+        }
+
+        /* This targets the internal input area */
+        div[data-baseweb="input"] {
+            background-color: #e3f2fd !important;
             border: 1px solid #add8e6 !important;
         }
 
-        /* Style the +/- buttons inside the input boxes */
+        /* 4. MANUAL ENTRY: +/- Buttons */
         button[data-testid="stNumberInputStepUp"], 
         button[data-testid="stNumberInputStepDown"] {
             background-color: #add8e6 !important;
@@ -43,32 +37,18 @@ st.markdown("""
             border-radius: 4px !important;
         }
 
-        /* 4. RUN DIAGNOSTIC BUTTON - Light Blue */
-        /* Targets the button specifically in the form */
+        /* 5. RUN DIAGNOSTIC BUTTON - Light Blue */
         div.stButton > button {
             background-color: #add8e6 !important;
             color: #0d3b4c !important;
             border: 1px solid #90cbd3 !important;
             font-weight: bold !important;
             width: 100% !important;
-            border-radius: 6px !important;
         }
 
-        /* 5. TABS CUSTOMIZATION */
-        div[data-baseweb="tab-highlight"] {
-            background-color: #1f77b4 !important;
-        }
-
-        button[aria-selected="true"] p {
-            color: #1f77b4 !important;
-            font-weight: bold !important;
-        }
-
-        /* 6. INPUT LABELS (AACS_prot, etc.) */
-        .stNumberInput label p {
-            color: #0d3b4c !important;
-            font-weight: bold !important;
-        }
+        /* 6. TABS & LABELS */
+        div[data-baseweb="tab-highlight"] { background-color: #1f77b4 !important; }
+        .stNumberInput label p { color: #0d3b4c !important; font-weight: bold !important; }
     </style>
 """, unsafe_allow_html=True)
 # Set page configuration
