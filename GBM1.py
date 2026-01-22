@@ -5,13 +5,11 @@ import numpy as np
 import io
 # --- FORCE BLUE THEME ---
 # --- FORCE BLUE THEME ---
-# --- FORCE BLUE THEME ---
-# --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* 1. THE WHOLE APP BACKGROUND */
-        /* Changed to a very light 'ice blue' for a clinical feel */
-        .stApp {
+        /* 1. THE ACTUAL FULL PAGE BACKGROUND */
+        /* Targets every possible container to force the blue color */
+        .stApp, .stMain, [data-testid="stAppViewContainer"], .main {
             background-color: #e6f3ff !important;
         }
 
@@ -31,7 +29,7 @@ st.markdown("""
         }
 
         /* 4. MANUAL ENTRY: Input Box Background */
-        /* Using a slightly darker blue than the background so they stand out */
+        /* We use a slightly darker blue so inputs stand out against the page */
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
             background-color: #cce6ff !important; 
             border-radius: 8px !important;
