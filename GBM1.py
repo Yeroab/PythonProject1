@@ -6,48 +6,35 @@ import io
 # --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* 1. Style the 'Run Diagnostic' Button in Manual Entry */
-        div.stButton > button {
+        /* 1. TOP HEADER BAR */
+        header[data-testid="stHeader"] {
             background-color: #1f77b4 !important;
+        }
+
+        /* 2. SIDEBAR - Slightly lighter dark blue */
+        section[data-testid="stSidebar"] {
+            background-color: #0d3b4c !important; /* Lighter than original black-blue */
+        }
+
+        /* Sidebar Text and Labels to White */
+        [data-testid="stSidebar"] h1, 
+        [data-testid="stSidebar"] label, 
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] .stMarkdown {
             color: white !important;
-            border-radius: 5px !important;
-            border: 1px solid #1f77b4 !important;
-            font-weight: bold !important;
-            padding: 0.5rem 1rem !important;
-            width: 100% !important; /* Makes it span the width of the inputs */
-            transition: background-color 0.3s ease !important;
         }
 
-        /* 2. Hover effect for the button */
-        div.stButton > button:hover {
-            background-color: #155a8a !important;
-            border-color: #155a8a !important;
-            color: white !important;
+        /* Sidebar Selectbox text visibility */
+        div[data-testid="stSelectbox"] div[role="button"] {
+            color: #0d3b4c !important;
         }
 
-        /* 3. Style the Number Input increment/decrement buttons (+ and -) */
-        button[data-testid="stNumberInputStepUp"], 
-        button[data-testid="stNumberInputStepDown"] {
-            background-color: transparent !important;
-            color: #1f77b4 !important;
-            border: none !important;
+        /* 3. MAIN AREA BACKGROUND */
+        .stApp {
+            background-color: #f0f8ff !important;
         }
 
-        button[data-testid="stNumberInputStepUp"]:hover, 
-        button[data-testid="stNumberInputStepDown"]:hover {
-            color: #155a8a !important;
-        }
-
-        /* 4. Highlight the input box border when clicked */
-        div[data-baseweb="input"]:focus-within {
-            border-color: #1f77b4 !important;
-        }
-
-        /* 5. Update the Tab Colors (Manual Entry vs Bulk) */
-        button[data-baseweb="tab"] {
-            font-size: 16px !important;
-        }
-
+        /* 4. TABS CUSTOMIZATION (Manual Entry / Bulk Entry) */
         /* Active Tab Underline */
         div[data-baseweb="tab-highlight"] {
             background-color: #1f77b4 !important;
@@ -55,6 +42,51 @@ st.markdown("""
 
         /* Active Tab Text */
         button[aria-selected="true"] p {
+            color: #1f77b4 !important;
+            font-weight: bold !important;
+        }
+
+        /* Inactive Tab Text */
+        button[data-baseweb="tab"] p {
+            color: #555555 !important;
+        }
+
+        /* 5. GLOBAL BUTTON STYLE (Manual & Bulk) */
+        div.stButton > button {
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border: 1px solid #1f77b4 !important;
+            border-radius: 6px !important;
+            padding: 0.5rem 2rem !important;
+            font-weight: 700 !important;
+            width: 100% !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+
+        /* Button Hover State */
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
+            border-color: #155a8a !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
+            transform: translateY(-1px) !important;
+        }
+
+        /* 6. INPUT BOXES & LABELS */
+        /* Labels in the main area (e.g., AACS_prot) */
+        .stNumberInput label {
+            color: #0d3b4c !important;
+            font-weight: bold !important;
+        }
+
+        /* Blue highlight when clicking into input boxes */
+        div[data-baseweb="input"]:focus-within {
+            border-color: #1f77b4 !important;
+        }
+
+        /* Plus and Minus buttons on number inputs */
+        button[data-testid="stNumberInputStepUp"], 
+        button[data-testid="stNumberInputStepDown"] {
             color: #1f77b4 !important;
         }
     </style>
