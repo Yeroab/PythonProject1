@@ -6,7 +6,6 @@ import io
 # --- FORCE BLUE THEME ---
  st.markdown("""
     <style>
-""", unsafe_allow_html=True)
         /* 1. Top Header Bar */
         header[data-testid="stHeader"] {
             background-color: #1f77b4 !important;
