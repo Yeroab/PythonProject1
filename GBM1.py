@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import io
 # --- FORCE BLUE THEME ---
+# --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
         /* 1. TOP HEADER BAR */
@@ -11,104 +12,62 @@ st.markdown("""
             background-color: #1f77b4 !important;
         }
 
-        /* 2. SIDEBAR - Slightly lighter dark blue */
+        /* 2. SIDEBAR - Navy Blue */
         section[data-testid="stSidebar"] {
-            background-color: #0d3b4c !important; /* Lighter than original black-blue */
+            background-color: #0d3b4c !important;
         }
 
-        /* Sidebar Text and Labels to White */
-        [data-testid="stSidebar"] h1, 
-        [data-testid="stSidebar"] label, 
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] .stMarkdown {
+        /* Sidebar Text to White */
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
             color: white !important;
-        }
-
-        /* Sidebar Selectbox text visibility */
-        div[data-testid="stSelectbox"] div[role="button"] {
-            color: #0d3b4c !important;
         }
 
         /* 3. MAIN AREA BACKGROUND */
         .stApp {
             background-color: #f0f8ff !important;
         }
-        /* 2. MANUAL ENTRY: Input Box Background (AACS, etc.) */
+
+        /* --- NEW: MANUAL ENTRY INPUT BACKGROUND (BLUE) --- */
+        /* This targets the actual box where numbers are typed */
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            background-color: #e3f2fd !important; /* Very light blue */
+            background-color: #e3f2fd !important; /* Light blue background */
             border-radius: 8px !important;
             border: 1px solid #add8e6 !important;
         }
 
-        /* 3. MANUAL ENTRY: +/- Buttons */
+        /* Style the +/- buttons inside the input boxes */
         button[data-testid="stNumberInputStepUp"], 
         button[data-testid="stNumberInputStepDown"] {
-            background-color: #add8e6 !important; /* Light blue */
-            color: #0d3b4c !important; /* Dark navy icons */
+            background-color: #add8e6 !important;
+            color: #0d3b4c !important;
             border-radius: 4px !important;
         }
 
         /* 4. RUN DIAGNOSTIC BUTTON - Light Blue */
+        /* Targets the button specifically in the form */
         div.stButton > button {
             background-color: #add8e6 !important;
             color: #0d3b4c !important;
             border: 1px solid #90cbd3 !important;
             font-weight: bold !important;
             width: 100% !important;
-        /* 4. TABS CUSTOMIZATION (Manual Entry / Bulk Entry) */
-        /* Active Tab Underline */
+            border-radius: 6px !important;
+        }
+
+        /* 5. TABS CUSTOMIZATION */
         div[data-baseweb="tab-highlight"] {
             background-color: #1f77b4 !important;
         }
 
-        /* Active Tab Text */
         button[aria-selected="true"] p {
             color: #1f77b4 !important;
             font-weight: bold !important;
         }
 
-        /* Inactive Tab Text */
-        button[data-baseweb="tab"] p {
-            color: #555555 !important;
-        }
-
-        /* 5. GLOBAL BUTTON STYLE (Manual & Bulk) */
-        div.stButton > button {
-            background-color: #1f77b4 !important;
-            color: blue !important;
-            border: 1px solid #1f77b4 !important;
-            border-radius: 6px !important;
-            padding: 0.5rem 2rem !important;
-            font-weight: 700 !important;
-            width: 100% !important;
-            transition: all 0.3s ease !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-        }
-
-        /* Button Hover State */
-        div.stButton > button:hover {
-            background-color: #155a8a !important;
-            border-color: #155a8a !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-            transform: translateY(-1px) !important;
-        }
-
-        /* 6. INPUT BOXES & LABELS */
-        /* Labels in the main area (e.g., AACS_prot) */
-        .stNumberInput label {
+        /* 6. INPUT LABELS (AACS_prot, etc.) */
+        .stNumberInput label p {
             color: #0d3b4c !important;
             font-weight: bold !important;
-        }
-
-        /* Blue highlight when clicking into input boxes */
-        div[data-baseweb="input"]:focus-within {
-            border-color: #1f77b4 !important;
-        }
-
-        /* Plus and Minus buttons on number inputs */
-        button[data-testid="stNumberInputStepUp"], 
-        button[data-testid="stNumberInputStepDown"] {
-            color: #1f77b4 !important;
         }
     </style>
 """, unsafe_allow_html=True)
