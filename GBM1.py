@@ -6,95 +6,36 @@ import io
 # --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* 1. TOP HEADER BAR */
-        header[data-testid="stHeader"] {
-            background-color: #1f77b4 !important;
-        }
-
-        /* 2. SIDEBAR - Slightly lighter dark blue */
+        /* Sidebar - Navy Blue */
         section[data-testid="stSidebar"] {
-            background-color: #0d3b4c !important; /* Lighter than original black-blue */
+            background-color: #1a3a4a !important;
         }
 
-        /* Sidebar Text and Labels to White */
-        [data-testid="stSidebar"] h1, 
-        [data-testid="stSidebar"] label, 
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] .stMarkdown {
-            color: white !important;
+        /* Manual Entry: Light Blue Input Boxes */
+        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
+            background-color: #e3f2fd !important;
+            border-radius: 8px !important;
         }
 
-        /* Sidebar Selectbox text visibility */
-        div[data-testid="stSelectbox"] div[role="button"] {
+        /* Manual Entry: Light Blue +/- buttons */
+        button[data-testid="stNumberInputStepUp"], 
+        button[data-testid="stNumberInputStepDown"] {
+            background-color: #add8e6 !important;
             color: #0d3b4c !important;
         }
 
-        /* 3. MAIN AREA BACKGROUND */
-        .stApp {
-            background-color: #f0f8ff !important;
+        /* Run Diagnostic Button - Light Blue */
+        div.stButton > button {
+            background-color: #add8e6 !important;
+            color: #0d3b4c !important;
+            border: 1px solid #90cbd3 !important;
+            font-weight: bold !important;
+            width: 100% !important;
         }
-
-        /* 4. TABS CUSTOMIZATION (Manual Entry / Bulk Entry) */
+        
         /* Active Tab Underline */
         div[data-baseweb="tab-highlight"] {
             background-color: #1f77b4 !important;
-        }
-
-        /* Active Tab Text */
-        button[aria-selected="true"] p {
-            color: #1f77b4 !important;
-            font-weight: bold !important;
-        }
-
-        /* Inactive Tab Text */
-        button[data-baseweb="tab"] p {
-            color: #555555 !important;
-        }
-
-        /* 5. GLOBAL BUTTON STYLE */
-        div.stButton > button {
-            background-color: #1f77b4 !important; /* Default Blue */
-            color: white !important;
-            border: 1px solid #1f77b4 !important;
-            border-radius: 6px !important;
-            padding: 0.5rem 2rem !important;
-            font-weight: 700 !important;
-            width: 100% !important;
-            transition: all 0.3s ease !important;
-        }
-
-        /* --- NEW EDIT: Light Blue specifically for Manual Entry tab --- */
-        /* Targets the button inside the first tab (Manual Entry) */
-        div[data-testid="stExpander"] div.stButton > button, 
-        .st-emotion-cache-1ky0h6e div.stButton > button {
-            background-color: #a0c4ff !important; /* Light Blue */
-            border-color: #a0c4ff !important;
-            color: #0d3b4c !important; /* Darker text for contrast on light blue */
-        }
-
-        /* Button Hover State */
-        div.stButton > button:hover {
-            background-color: #155a8a !important;
-            border-color: #155a8a !important;
-            transform: translateY(-1px) !important;
-        }
-
-        /* 6. INPUT BOXES & LABELS */
-        /* Labels in the main area (e.g., AACS_prot) */
-        .stNumberInput label {
-            color: #0d3b4c !important;
-            font-weight: bold !important;
-        }
-
-        /* Blue highlight when clicking into input boxes */
-        div[data-baseweb="input"]:focus-within {
-            border-color: #1f77b4 !important;
-        }
-
-        /* Plus and Minus buttons on number inputs */
-        button[data-testid="stNumberInputStepUp"], 
-        button[data-testid="stNumberInputStepDown"] {
-            color: #1f77b4 !important;
         }
     </style>
 """, unsafe_allow_html=True)
