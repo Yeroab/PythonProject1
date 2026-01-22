@@ -8,6 +8,11 @@ import io
 # --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
+        /* 1. THE WHOLE APP BACKGROUND */
+        /* Changed to a very light 'ice blue' for a clinical feel */
+        .stApp {
+            background-color: #e6f3ff !important;
+        }
         /* 1. TOP HEADER & SIDEBAR */
         header[data-testid="stHeader"] { background-color: #1f77b4 !important; }
         section[data-testid="stSidebar"] { background-color: #0d3b4c !important; }
