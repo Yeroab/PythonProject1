@@ -6,40 +6,59 @@ import io
 # --- FORCE BLUE THEME ---
 st.markdown("""
     <style>
-        /* Sidebar - Navy Blue */
-        section[data-testid="stSidebar"] {
-            background-color: #1a3a4a !important;
+        /* 1. Style the 'Run Diagnostic' Button in Manual Entry */
+        div.stButton > button {
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border-radius: 5px !important;
+            border: 1px solid #1f77b4 !important;
+            font-weight: bold !important;
+            padding: 0.5rem 1rem !important;
+            width: 100% !important; /* Makes it span the width of the inputs */
+            transition: background-color 0.3s ease !important;
         }
 
-        /* Manual Entry: Light Blue Input Boxes */
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            background-color: #e3f2fd !important;
-            border-radius: 8px !important;
+        /* 2. Hover effect for the button */
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
+            border-color: #155a8a !important;
+            color: white !important;
         }
 
-        /* Manual Entry: Light Blue +/- buttons */
+        /* 3. Style the Number Input increment/decrement buttons (+ and -) */
         button[data-testid="stNumberInputStepUp"], 
         button[data-testid="stNumberInputStepDown"] {
-            background-color: #add8e6 !important;
-            color: #0d3b4c !important;
+            background-color: transparent !important;
+            color: #1f77b4 !important;
+            border: none !important;
         }
 
-        /* Run Diagnostic Button - Light Blue */
-        div.stButton > button {
-            background-color: #add8e6 !important;
-            color: #0d3b4c !important;
-            border: 1px solid #90cbd3 !important;
-            font-weight: bold !important;
-            width: 100% !important;
+        button[data-testid="stNumberInputStepUp"]:hover, 
+        button[data-testid="stNumberInputStepDown"]:hover {
+            color: #155a8a !important;
         }
-        
+
+        /* 4. Highlight the input box border when clicked */
+        div[data-baseweb="input"]:focus-within {
+            border-color: #1f77b4 !important;
+        }
+
+        /* 5. Update the Tab Colors (Manual Entry vs Bulk) */
+        button[data-baseweb="tab"] {
+            font-size: 16px !important;
+        }
+
         /* Active Tab Underline */
         div[data-baseweb="tab-highlight"] {
             background-color: #1f77b4 !important;
         }
+
+        /* Active Tab Text */
+        button[aria-selected="true"] p {
+            color: #1f77b4 !important;
+        }
     </style>
 """, unsafe_allow_html=True)
-
 # Set page configuration
 st.set_page_config(page_title="MulitNet-Ai", layout="wide")
 
