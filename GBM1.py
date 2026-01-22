@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import io
 # --- FORCE BLUE THEME ---
- st.markdown("""
+st.markdown("""
     <style>
         /* 1. Top Header Bar */
         header[data-testid="stHeader"] {
