@@ -203,7 +203,7 @@ if app_mode == "Upload your own omics data":
                 bulk_df = pd.read_csv(uploaded_file)
     
                 # Check if 'Patient_ID' and biomarkers are present
-                 required_cols = ['Patient_ID'] + all_features
+                required_cols = ['Patient_ID'] + all_features
                 if all(col in bulk_df.columns for col in required_cols):
                 # --- STEP 2: Run Predictions ---
                 probs = model.predict_proba(bulk_df[all_features])[:, 1]
