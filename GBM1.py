@@ -205,47 +205,47 @@ if app_mode == "Upload your own omics data":
                 # Check if 'Patient_ID' and biomarkers are present
                 required_cols = ['Patient_ID'] + all_features
                 if all(col in bulk_df.columns for col in required_cols):
-                # --- STEP 2: Run Predictions ---
-                probs = model.predict_proba(bulk_df[all_features])[:, 1]
-                bulk_df['GBM_Probability'] = probs
-                bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
-                    lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
+                    # --- STEP 2: Run Predictions ---
+                    probs = model.predict_proba(bulk_df[all_features])[:, 1]
+                    bulk_df['GBM_Probability'] = probs
+                    bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
+                        lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
 
-                # --- STEP 3: Identify Relevant Biomarkers ---
-                # Filters the 843 columns down to only those the model actually used
-                relevant_biomarkers = [f for f in all_features if importance_map.get(f, 0) > 0]
-                relevant_biomarkers = sorted(relevant_biomarkers, 
-                                             key=lambda x: importance_map.get(x, 0), 
-                                             reverse=True)
+                    # --- STEP 3: Identify Relevant Biomarkers ---
+                    # Filters the 843 columns down to only those the model actually used
+                    relevant_biomarkers = [f for f in all_features if importance_map.get(f, 0) > 0]
+                    relevant_biomarkers = sorted(relevant_biomarkers, 
+                                                 key=lambda x: importance_map.get(x, 0), 
+                                                 reverse=True)
 
-                # --- STEP 4: Visualizations (This is where your error likely happened) ---
-                st.subheader("📊 Batch Analysis Results")
-                # bulk_df is now defined, so set_index('Patient_ID') will work
-                st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
+                    # --- STEP 4: Visualizations (This is where your error likely happened) ---
+                    st.subheader("📊 Batch Analysis Results")
+                    # bulk_df is now defined, so set_index('Patient_ID') will work
+                    st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
 
-                # --- STEP 5: Display & Download Filtered Results ---
-                st.write(f"### 🧬 Diagnostic Details (Showing {len(relevant_biomarkers)} active markers)")
+                    # --- STEP 5: Display & Download Filtered Results ---
+                    st.write(f"### 🧬 Diagnostic Details (Showing {len(relevant_biomarkers)} active markers)")
         
-                display_cols = ['Patient_ID', 'GBM_Probability', 'Result'] + relevant_biomarkers
-                filtered_results = bulk_df[display_cols]
+                    display_cols = ['Patient_ID', 'GBM_Probability', 'Result'] + relevant_biomarkers
+                    filtered_results = bulk_df[display_cols]
         
-                st.dataframe(filtered_results)
+                    st.dataframe(filtered_results)
 
-                # Download button for the filtered relevant results
-                csv_buffer = io.BytesIO()
-                filtered_results.to_csv(csv_buffer, index=False)
-                csv_buffer.seek(0)
+                    # Download button for the filtered relevant results
+                    csv_buffer = io.BytesIO()
+                    filtered_results.to_csv(csv_buffer, index=False)
+                    csv_buffer.seek(0)
 
-                st.download_button(
-                    label="📥 Download Diagnostic Results (Relevant Markers Only)",
-                    data=csv_buffer,
-                    file_name="GBM_Diagnostic_Results.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            else:
-                missing = [c for c in required_cols if c not in bulk_df.columns]
-                st.error(f"Missing required columns in CSV: {', '.join(missing[:5])}...")
+                    st.download_button(
+                        label="📥 Download Diagnostic Results (Relevant Markers Only)",
+                        data=csv_buffer,
+                        file_name="GBM_Diagnostic_Results.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                else:
+                    missing = [c for c in required_cols if c not in bulk_df.columns]
+                    st.error(f"Missing required columns in CSV: {', '.join(missing[:5])}...")
 
 # --- DOCUMENTATION AND DEMO PAGES (INDENTED CORRECTLY) ---
 elif app_mode == "App Documentation":
