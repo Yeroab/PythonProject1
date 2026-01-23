@@ -155,8 +155,8 @@ if app_mode == "Upload your own omics data":
                         st.error("Diagnostic Result: Postive")
                     else:
                         st.success("Diagnostic Result: Negative")
-
-       with tab2:
+                        
+        with tab2:
             st.subheader("Bulk Patient Processing")
             st.write("Process 100 patient profiles simultaneously via CSV upload.")
 
