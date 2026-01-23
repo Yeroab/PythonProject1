@@ -196,7 +196,7 @@ if app_mode == "Upload your own omics data":
 
             st.divider()
 
-             uploaded_file = st.file_uploader("Upload your completed CSV file", type=["csv"])
+            uploaded_file = st.file_uploader("Upload your completed CSV file", type=["csv"])
             if uploaded_file:
                 bulk_df = pd.read_csv(uploaded_file)
                 if all(f in bulk_df.columns for f in all_features):
