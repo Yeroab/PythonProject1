@@ -171,9 +171,19 @@ if app_mode == "Upload your own omics data":
             template_df = pd.DataFrame(data_rows, columns=['Patient_ID'] + all_features)
 
             # 4. Prepare the file buffer
-            buffer = io.BytesIO()
-            template_df.to_csv(buffer, index=False)
-            buffer.seek(0)
+            st.subheader("📊 Comparative Risk Analysis")
+            st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
+            # NEW: Dynamically identify features with actual impact (non-zero importance)
+            # This filters your 843 features down to only the ones the model actually uses
+            relevant_biomarkers = [f for f in all_features if importance_map.get(f, 0) > 0]
+            # Optional: Sort them so the most important biomarkers appear first in the table
+            relevant_biomarkers = sorted(relevant_biomarkers, key=lambda x: importance_map.get(x, 0), reverse=True)
+
+            st.write("###  Detailed Results (Key Biomarkers Only)")
+            st.write(f"This table displays the {len(relevant_biomarkers)} biomarkers that contributed to the diagnostic score.")
+
+            # Display the dataframe with only relevant columns
+            st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + relevant_biomarkers])
 
             # 5. The Blue Download Button
             st.download_button(
