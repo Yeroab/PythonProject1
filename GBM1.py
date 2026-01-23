@@ -155,44 +155,18 @@ if app_mode == "Upload your own omics data":
                         st.error("Diagnostic Result: Postive")
                     else:
                         st.success("Diagnostic Result: Negative")
-                        
+
         with tab2:
             st.subheader("Bulk Patient Processing")
-            st.write("Process 100 patient profiles simultaneously via CSV upload.")
+            st.write("Process multiple patients via CSV upload.")
 
-            # 1. Generate 100 Patient IDs (Patient_001 to Patient_100)
-            patient_ids = [f'Patient_{i:03d}' for i in range(1, 101)]
-
-            # 2. Create the data grid: 100 rows of 0.00 for all biomarkers
-            # We use a list comprehension for speed
-            data_rows = [[pid] + [0.00] * len(all_features) for pid in patient_ids]
-
-            # 3. Build the DataFrame
-            template_df = pd.DataFrame(data_rows, columns=['Patient_ID'] + all_features)
-
-            # 4. Prepare the file buffer
-            st.subheader("📊 Comparative Risk Analysis")
-            st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
-            # NEW: Dynamically identify features with actual impact (non-zero importance)
-            # This filters your 843 features down to only the ones the model actually uses
-            relevant_biomarkers = [f for f in all_features if importance_map.get(f, 0) > 0]
-            # Optional: Sort them so the most important biomarkers appear first in the table
-            relevant_biomarkers = sorted(relevant_biomarkers, key=lambda x: importance_map.get(x, 0), reverse=True)
-
-            st.write("###  Detailed Results (Key Biomarkers Only)")
-            st.write(f"This table displays the {len(relevant_biomarkers)} biomarkers that contributed to the diagnostic score.")
-
-            # Display the dataframe with only relevant columns
-            st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + relevant_biomarkers])
-
-            # 5. The Blue Download Button
-            st.download_button(
-                label=" Download 100-Patient CSV Template",
-                data=buffer,
-                file_name="MultiNet_Bulk_Template.csv",
-                mime="text/csv",
-                use_container_width=True  # Makes it look clean on the page
-            )
+              # (Template generation code remains the same...)
+            template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
+            template_df.loc[0] = ['Example_Patient_001'] + [0.0] * len(all_features)
+            buffer = io.BytesIO()
+            template_df.to_csv(buffer, index=False)
+            buffer.seek(0)
+            st.download_button("Download CSV Template", data=buffer, file_name="gbm_bulk_template.csv", mime="text/csv")
 
             st.divider()
 
@@ -200,11 +174,36 @@ if app_mode == "Upload your own omics data":
             if uploaded_file:
                 bulk_df = pd.read_csv(uploaded_file)
                 if all(f in bulk_df.columns for f in all_features):
+                    # 1. Run Predictions
                     probs = model.predict_proba(bulk_df[all_features])[:, 1]
                     bulk_df['GBM_Probability'] = probs
                     bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
                         lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
 
+                    # 2. NEW: Calculate Impact Scores for the CSV Export
+                    # Impact = Global Importance * User Input Value
+                    impact_export_df = bulk_df[['Patient_ID']].copy()
+                    
+                    # Create a dictionary of global importances for quick lookup
+                    importance_map = dict(zip(feat_df['feature'], feat_df['importance']))
+                    
+                    for feat in all_features:
+                        # Calculate impact for every feature for every patient
+                        impact_export_df[f"{feat}_impact"] = bulk_df[feat] * importance_map.get(feat, 0)
+
+                    # 3. Create Download Button for Impact Scores
+                    impact_buffer = io.BytesIO()
+                    impact_export_df.to_csv(impact_buffer, index=False)
+                    impact_buffer.seek(0)
+                    
+                    st.download_button(
+                        label=" Download Full Impact Scores CSV",
+                        data=impact_buffer,
+                        file_name="gbm_patient_impact_scores.csv",
+                        mime="text/csv"
+                    )
+
+                    # 4. Display Visualizations (Existing code)
                     st.subheader(" Comparative Risk Analysis")
                     st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
 
@@ -212,8 +211,6 @@ if app_mode == "Upload your own omics data":
                     st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + top_10])
                 else:
                     st.error("Missing required columns in CSV.")
-
-
 # --- DOCUMENTATION AND DEMO PAGES (INDENTED CORRECTLY) ---
 elif app_mode == "App Documentation":
     st.title(" App Documentation & User Guide")
@@ -345,4 +342,3 @@ elif app_mode == "Interactive Demo Walkthrough":
     st.subheader("Final Interpretation")
     st.write(
         "This walkthrough demonstrates that the modeI calculates probability based on the intensity of the raw data. By entering values for these specific features, users can perform accurate real-world analysis.")
-
