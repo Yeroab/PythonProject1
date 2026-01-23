@@ -156,17 +156,33 @@ if app_mode == "Upload your own omics data":
                     else:
                         st.success("Diagnostic Result: Negative")
 
-        with tab2:
+       with tab2:
             st.subheader("Bulk Patient Processing")
-            st.write("Process multiple patients via CSV upload.")
+            st.write("Process 100 patient profiles simultaneously via CSV upload.")
 
-              # (Template generation code remains the same...)
-            template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
-            template_df.loc[0] = ['Example_Patient_001'] + [0.0] * len(all_features)
+            # 1. Generate 100 Patient IDs (Patient_001 to Patient_100)
+            patient_ids = [f'Patient_{i:03d}' for i in range(1, 101)]
+
+            # 2. Create the data grid: 100 rows of 0.00 for all biomarkers
+            # We use a list comprehension for speed
+            data_rows = [[pid] + [0.00] * len(all_features) for pid in patient_ids]
+
+            # 3. Build the DataFrame
+            template_df = pd.DataFrame(data_rows, columns=['Patient_ID'] + all_features)
+
+            # 4. Prepare the file buffer
             buffer = io.BytesIO()
             template_df.to_csv(buffer, index=False)
             buffer.seek(0)
-            st.download_button("Download CSV Template", data=buffer, file_name="gbm_bulk_template.csv", mime="text/csv")
+
+            # 5. The Blue Download Button
+            st.download_button(
+                label=" Download 100-Patient CSV Template",
+                data=buffer,
+                file_name="MultiNet_Bulk_Template.csv",
+                mime="text/csv",
+                use_container_width=True  # Makes it look clean on the page
+            )
 
             st.divider()
 
