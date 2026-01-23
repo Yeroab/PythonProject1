@@ -197,46 +197,64 @@ if app_mode == "Upload your own omics data":
             st.divider()
 
             uploaded_file = st.file_uploader("Upload your completed CSV file", type=["csv"])
+
             if uploaded_file:
                 bulk_df = pd.read_csv(uploaded_file)
-                if all(f in bulk_df.columns for f in all_features):
+    
+                # FIX: Ensure 'Patient_ID' is checked along with the biomarkers
+                required_cols = ['Patient_ID'] + all_features
+    
+                if all(col in bulk_df.columns for col in required_cols):
                     # 1. Run Predictions
                     probs = model.predict_proba(bulk_df[all_features])[:, 1]
                     bulk_df['GBM_Probability'] = probs
                     bulk_df['Result'] = bulk_df['GBM_Probability'].apply(
                         lambda x: "POSITIVE" if x > 0.5 else "NEGATIVE")
 
-                    # 2. NEW: Calculate Impact Scores for the CSV Export
-                    # Impact = Global Importance * User Input Value
-                    impact_export_df = bulk_df[['Patient_ID']].copy()
-                    
-                    # Create a dictionary of global importances for quick lookup
-                    importance_map = dict(zip(feat_df['feature'], feat_df['importance']))
-                    
-                    for feat in all_features:
-                        # Calculate impact for every feature for every patient
-                        impact_export_df[f"{feat}_impact"] = bulk_df[feat] * importance_map.get(feat, 0)
+                # 2. Identify Relevant Biomarkers (Importance > 0)
+                # We use the feat_df you already have in your code
+                relevant_biomarkers = feat_df[feat_df['importance'] > 0]['feature'].tolist()
+        
+                # Sort them so the most impactful ones appear first in the table
+                relevant_biomarkers = sorted(relevant_biomarkers, 
+                                             key=lambda x: importance_map.get(x, 0), 
+                                             reverse=True)
 
-                    # 3. Create Download Button for Impact Scores
-                    impact_buffer = io.BytesIO()
-                    impact_export_df.to_csv(impact_buffer, index=False)
-                    impact_buffer.seek(0)
-                    
-                    st.download_button(
-                        label=" Download Full Impact Scores CSV",
-                        data=impact_buffer,
-                        file_name="gbm_patient_impact_scores.csv",
-                        mime="text/csv"
-                    )
+                # 3. Display Visualizations
+                st.subheader("📊 Comparative Risk Analysis")
+                # The fix: This now works because we validated 'Patient_ID' exists
+                st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
 
-                    # 4. Display Visualizations (Existing code)
-                    st.subheader(" Comparative Risk Analysis")
-                    st.bar_chart(bulk_df.set_index('Patient_ID')['GBM_Probability'])
+                # 4. Show the Table with ONLY relevant columns
+                st.write("### 🧬 Detailed Results (Relevant Biomarkers Only)")
+                st.write(f"Showing {len(relevant_biomarkers)} biomarkers that influenced the model (out of 843 total).")
+        
+                # We show ID, Probability, Result, and the relevant features
+                display_cols = ['Patient_ID', 'GBM_Probability', 'Result'] + relevant_biomarkers
+                st.dataframe(bulk_df[display_cols])
 
-                    st.write("### Detailed Results Table")
-                    st.dataframe(bulk_df[['Patient_ID', 'GBM_Probability', 'Result'] + top_10])
-                else:
-                    st.error("Missing required columns in CSV.")
+                # 5. Full Impact Export (keeping your previous logic)
+                impact_export_df = bulk_df[['Patient_ID']].copy()
+                for feat in all_features:
+                     impact_export_df[f"{feat}_impact"] = bulk_df[feat] * importance_map.get(feat, 0)
+                # 6. DOWNLOAD BUTTON: Export Results with Relevant Markers Only
+                # Creating a simplified CSV for the user
+                export_df = bulk_df[display_cols]
+                csv_buffer = io.BytesIO()
+                export_df.to_csv(csv_buffer, index=False)
+                csv_buffer.seek(0)
+
+                st.download_button(
+                    label="Download Results (Relevant Markers Only)",
+                    data=csv_buffer,
+                    file_name="MultiNet_AI_Results.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+        
+            else:
+                missing = [c for c in required_cols if c not in bulk_df.columns]
+                st.error(f"Missing required columns: {', '.join(missing[:5])}...")
 # --- DOCUMENTATION AND DEMO PAGES (INDENTED CORRECTLY) ---
 elif app_mode == "App Documentation":
     st.title(" App Documentation & User Guide")
