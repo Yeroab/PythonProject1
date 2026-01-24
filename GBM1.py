@@ -210,9 +210,9 @@ elif app_mode == "📖 App Documentation":
         st.markdown('<div class="doc-section"><div class="step-header">1. Overview of MultiNet-AI Functionality</div>', unsafe_allow_html=True)
         st.write("""
         MultiNet-AI allows users to input raw abundance scores for relevant features across multiple omics types:
-        Proteomics (prot)** – Protein expression levels
-        Transcriptomics (rna)** – Gene expression values
-        Metabolomics (met)** – Metabolite concentrations
+        1. Proteomics (prot)** – Protein expression levels
+        2. Transcriptomics (rna)** – Gene expression values
+        3. Metabolomics (met)** – Metabolite concentrations
         
         The platform integrates these datasets into a single predictive model that uses binary logistic regression to compute a risk factor for GBM. The output is provided as a probability score, representing the likelihood of a sample being GBM-positive. The model evaluates the relative contribution of each biomarker, which is visualized in a bar graph to illustrate which features most influence the prediction.
         """)
@@ -222,9 +222,9 @@ elif app_mode == "📖 App Documentation":
         st.markdown('<div class="doc-section"><div class="step-header">2. Accessing the GUI</div>', unsafe_allow_html=True)
         st.write("""
         The MultiNet-AI web application is freely accessible via a web browser. No installation is required. Upon loading the platform, users are presented with a sidebar menu to navigate between:
-        Upload your own omics data
-        App Documentation & User Guide
-        Interactive Demo Walkthrough
+        1. Upload your own omics data
+        2. App Documentation & User Guide
+        3. Interactive Demo Walkthrough
         """)
         st.markdown('</div>', unsafe_allow_html=True)
 
