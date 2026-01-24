@@ -198,30 +198,100 @@ elif app_mode == "🩺 Diagnostic Interface":
                     st.bar_chart(bulk_df.set_index('Patient_ID')['Risk_Score'])
                     st.dataframe(bulk_df[['Patient_ID', 'Risk_Score']])
 
-# --- PAGE 2: DOCUMENTATION ---
+# --- PAGE 2: APP DOCUMENTATION (EVERY WORD INCLUDED) ---
 elif app_mode == "📖 App Documentation":
-    st.title("Documentation & User Guide")
+    st.title("MultiNet-AI Web Application Documentation")
     
-    st.markdown('<div class="doc-section"><div class="step-header">I. Diagnostic Processing & Inputs</div>', unsafe_allow_html=True)
-    st.write("""
-    The MultiNet-AI GUI is designed for precision-oncology workflows. Users should provide **Raw Abundance Scores** (standardized counts or intensity values) for multi-omic features. 
-    
-    **Workflow Stages:**
-    1. **Data Ingestion:** The system accepts single-entry manual values or batch CSV uploads.
-    2. **Feature Mapping:** It automatically aligns inputs to the Top 10 diagnostic drivers identified during model training.
-    3. **Consensus Scoring:** The backend runs the XGBoost primary classifier and cross-references results with the Metabolic Detector.
+    st.markdown("""
+    The MultiNet-AI GUI is a user-friendly platform designed to integrate multi-omics data—proteomics, transcriptomics, and metabolomics—to provide patient-specific diagnostic predictions for Glioblastoma Multiforme (GBM). This documentation provides a step-by-step guide to effectively operate the web application, including both manual single-sample entry and bulk multi-sample analysis.
     """)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown('<div class="doc-section"><div class="step-header">II. Visual Evidence & Interpretability</div>', unsafe_allow_html=True)
-    st.write("""
-    - **Impact Charts:** Visualize how much weight each biomarker contributed to the final probability score.
-    - **Pathways Mapping:** Displays the biological context (EMT, Metabolic Pathways, etc.) of the flagged biomarkers.
-    """)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">1. Overview of MultiNet-AI Functionality</div>', unsafe_allow_html=True)
+        st.write("""
+        MultiNet-AI allows users to input raw abundance scores for relevant features across multiple omics types:
+        * **Proteomics (prot)** – Protein expression levels
+        * **Transcriptomics (rna)** – Gene expression values
+        * **Metabolomics (met)** – Metabolite concentrations
+        
+        The platform integrates these datasets into a single predictive model that uses binary logistic regression to compute a risk factor for GBM. The output is provided as a probability score, representing the likelihood of a sample being GBM-positive. The model evaluates the relative contribution of each biomarker, which is visualized in a bar graph to illustrate which features most influence the prediction.
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">2. Accessing the GUI</div>', unsafe_allow_html=True)
+        st.write("""
+        The MultiNet-AI web application is freely accessible via a web browser. No installation is required. Upon loading the platform, users are presented with a sidebar menu to navigate between:
+        * Upload your own omics data
+        * App Documentation & User Guide
+        * Interactive Demo Walkthrough
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">3. Single-Sample Manual Entry</div>', unsafe_allow_html=True)
+        st.write("""
+        1. Navigate to “Upload your own omics data” from the sidebar.
+        2. Switch to the tab labeled “Enter Omics Sample Value (Manual Entry)”.
+        3. The interface displays the top 10 most critical biomarkers identified by the model.
+        4. Users can input raw abundance values for each biomarker in the provided fields. Each biomarker corresponds to a relevant feature (prot, rna, met).
+        5. Click the “Run Diagnostic” button to process the input values. The model automatically sets non-specified features to 0.00 to maintain proper feature alignment.
+        
+        **Review the output:**
+        * **Probability Score:** Displayed as a percentage representing the GBM risk.
+        * **Biomarker Impact Chart:** A bar graph shows the contribution of each entered biomarker.
+        
+        **Interpretation:**
+        * Probability > 50% → High likelihood of GBM-positive profile
+        * Probability < 50% → Likely healthy or negative profile
+        """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">4. Bulk Multi-Sample Analysis (CSV)</div>', unsafe_allow_html=True)
+        st.write("""
+        1. Navigate to the “Bulk Analysis for Multiple Omics Data (CSV)” tab under the Upload your own omics data page.
+        2. Download the CSV template, which includes columns for Patient ID and all relevant features (prot, rna, met) used by the model.
+        3. Populate the template with patient data according to the feature labels. Unfilled features default to 0.00 during processing.
+        4. Upload the completed CSV using the file uploader. The model performs predictions for each patient automatically.
+        
+        **Review bulk output:**
+        * **Results Table:** Displays patient IDs, predicted probability scores, and GBM classification.
+        * **Impact Score CSV:** Downloadable CSV includes impact scores for each feature per patient, calculated as user input × global feature importance.
+        * **Comparative Risk Bar Graph:** Visualizes the relative probability scores of all patients in the batch.
+        """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">5. Interactive Demo Walkthrough</div>', unsafe_allow_html=True)
+        st.write("""
+        Navigate to “Interactive Demo Walkthrough” from the sidebar. Select a clinical profile to observe how modifying raw values directly affects the confidence score and predicted classification. The simulation highlights how specific biomarkers influence the model’s outcome in real time.
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">6. Key Features Summary</div>', unsafe_allow_html=True)
+        st.write("""
+        * **Manual and Bulk Data Input:** Flexible options for single or multiple samples.
+        * **Automatic Feature Handling:** Non-input features default to 0.00 for model compatibility.
+        * **Probability Scores and Classification:** Outputs percentage likelihood and positive/negative classification.
+        * **Visualizations:** Bar graphs for biomarker impact and comparative risk analysis.
+        * **Downloadable Templates and Results:** CSV files for input and output, enabling easy record-keeping.
+        """)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="doc-section"><div class="step-header">7. Recommendations for Use</div>', unsafe_allow_html=True)
+        st.write("""
+        * Always input raw abundance values as measured experimentally; the model assumes data in its original scale.
+        * Use the template provided for bulk analyses to prevent formatting errors.
+        * For new users, start with the Interactive Demo to understand model behavior and interpretation of outputs.
+        * Review the biomarker impact charts to gain insights into the features most influencing predictions.
+        """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 # --- PAGE 3: DYNAMIC DEMO (Top 10 Focused) ---
 elif app_mode == "🧪 Interactive Demo Walkthrough":
     st.title("Demo Walkthrough")
