@@ -184,4 +184,3 @@ elif app_mode == "🧪 Interactive Demo Walkthrough":
             
             st.bar_chart(pd.DataFrame(impact_data).set_index("Gene"), color="#004080")
 
-        st.info("Notice: Increasing high-importance markers like VIM or GAPDH will spike the probability much faster than lower-ranked genes.")
