@@ -7,61 +7,24 @@ import io
 # --- CONFIG & THEME ---
 st.set_page_config(page_title="MultiNet-AI Pro | Blue Edition", layout="wide")
 
-# PROFESSIONAL BLUE THEME CSS
+# PROFESSIONAL NAVY BLUE THEME CSS
 st.markdown("""
     <style>
-        /* Overall background and text */
-        .stApp, .stMain, [data-testid="stAppViewContainer"], .main {
-            background-color: #f0f4f8 !important;
-        }
-        
-        /* Header and Sidebar styling */
-        header[data-testid="stHeader"] {
-            background-color: #003366 !important;
-        }
-        section[data-testid="stSidebar"] {
-            background-color: #001f3f !important;
-        }
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
-            color: #e6f2ff !important;
-        }
-
-        /* Number Input Styling */
+        .stApp, .stMain, [data-testid="stAppViewContainer"], .main { background-color: #f0f4f8 !important; }
+        header[data-testid="stHeader"] { background-color: #003366 !important; }
+        section[data-testid="stSidebar"] { background-color: #001f3f !important; }
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #e6f2ff !important; }
         div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            background-color: #ffffff !important; 
-            border-radius: 8px !important;
-            border: 2px solid #0056b3 !important;
+            background-color: #ffffff !important; border-radius: 8px !important; border: 2px solid #0056b3 !important;
         }
-
-        /* Button Styling */
         div.stButton > button {
-            background-color: #004080 !important;
-            color: white !important;
-            border: none !important;
-            font-weight: bold !important;
-            height: 3em !important;
-            border-radius: 8px !important;
-            transition: 0.3s;
+            background-color: #004080 !important; color: white !important; border: none !important;
+            font-weight: bold !important; height: 3em !important; border-radius: 8px !important;
         }
-        div.stButton > button:hover {
-            background-color: #0056b3 !important;
-            border: 1px solid #cce6ff !important;
-        }
-
-        /* Tab Styling */
-        div[data-baseweb="tab-highlight"] {
-            background-color: #004080 !important;
-        }
-        
-        /* Documentation Boxes */
-        .doc-card {
-            background-color: #ffffff;
-            padding: 25px;
-            border-radius: 12px;
-            border-left: 8px solid #003366;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 25px;
-        }
+        div.stButton > button:hover { background-color: #0056b3 !important; }
+        div[data-baseweb="tab-highlight"] { background-color: #004080 !important; }
+        .doc-section { background-color: #ffffff; padding: 30px; border-radius: 12px; border-left: 10px solid #003366; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .step-header { color: #003366; font-weight: bold; font-size: 1.4em; border-bottom: 2px solid #e6f2ff; padding-bottom: 10px; margin-bottom: 15px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -79,156 +42,124 @@ def load_assets():
 
 diag, detector, pathways, biomarker_ref = load_assets()
 
-# --- NAVIGATION ---
+# --- SIDEBAR NAVIGATION ---
 st.sidebar.title("💎 MultiNet-AI Pro")
-st.sidebar.markdown("---")
 app_mode = st.sidebar.radio(
-    "Clinical Modules",
-    ["Diagnostic Interface", "Pathways & Genomics", "Research Library", "Technical Documentation", "Interactive Demo"]
+    "Select Module",
+    ["Run Diagnostic Suite", "Pathways & Genomics", "App Documentation", "Interactive Demo Walkthrough"]
 )
 
 # --- PAGE 1: DIAGNOSTIC INTERFACE ---
-if app_mode == "Diagnostic Interface":
-    st.title("🧬 MultiNet_AI")
+if app_mode == "Run Diagnostic Suite":
+    st.title("🩺 MultiNet-AI Diagnostic Workflow")
     if diag and detector:
         model = diag['model']
         all_features = diag['features']
         feat_df = pd.DataFrame({'feature': all_features, 'importance': model.feature_importances_}).sort_values(by='importance', ascending=False)
         top_10 = feat_df['feature'].head(10).tolist()
 
-        tab1, tab2 = st.tabs(["🧬 Single Patient Entry", "📊 Bulk Cohort Processing"])
-
+        tab1, tab2 = st.tabs(["🧬 Single Sample Entry", "📊 Bulk Processing"])
         with tab1:
-            with st.form("main_diag"):
-                st.subheader("Quantitative Biomarker Input")
+            with st.form("diag_form"):
+                st.subheader("Manual Abundance Input")
                 cols = st.columns(2)
                 user_inputs = {feat: cols[i % 2].number_input(f"{feat}", value=100.0) for i, feat in enumerate(top_10)}
-                
-                submitted = st.form_submit_button("EXECUTE CONSENSUS ANALYSIS")
-                if submitted:
+                if st.form_submit_button("RUN DIAGNOSTIC CONSENSUS"):
                     full_input = pd.DataFrame({f: [user_inputs.get(f, 0.0)] for f in all_features})
+                    p1 = model.predict_proba(full_input)[0][1]
+                    det_input = pd.DataFrame({f: [user_inputs.get(f, 0.0)] for f in detector.get('features', all_features)})
+                    p2 = detector['model'].predict_proba(det_input)[0][1]
                     
-                    # Compute results from both models
-                    p_diag = model.predict_proba(full_input)[0][1]
-                    det_features = detector.get('features', all_features)
-                    det_input = pd.DataFrame({f: [user_inputs.get(f, 0.0)] for f in det_features})
-                    p_det = detector['model'].predict_proba(det_input)[0][1]
+                    st.divider()
+                    c1, c2 = st.columns(2)
+                    c1.metric("Diagnostic Confidence", f"{p1:.2%}")
+                    c2.metric("Validation Score", f"{p2:.2%}")
+                    if p1 > 0.5: st.error("CONSENSUS: GBM POSITIVE")
+                    else: st.success("CONSENSUS: GBM NEGATIVE")
+                    st.bar_chart(pd.DataFrame([{"Biomarker": f, "Impact": user_inputs[f] * feat_df[feat_df['feature']==f]['importance'].values[0]} for f in top_10]).set_index("Biomarker"), color="#003366")
 
-                    st.markdown("---")
-                    res_col1, res_col2 = st.columns(2)
-                    res_col1.metric("Diagnostic Confidence", f"{p_diag:.2%}")
-                    res_col2.metric("Validation Score", f"{p_det:.2%}")
-
-                    if p_diag > 0.5:
-                        st.error(" RESULT: POSITIVE - High correlation with GBM molecular signature.")
-                    else:
-                        st.success(" RESULT: NEGATIVE - Sample aligns with healthy/control baseline.")
-
-                    st.subheader("Local Interpretability Map")
-                    impact = pd.DataFrame([{"Biomarker": f, "Risk Impact": user_inputs[f] * feat_df[feat_df['feature']==f]['importance'].values[0]} for f in top_10]).set_index("Biomarker")
-                    st.bar_chart(impact, color="#003366")
-
-        with tab2:
-            st.subheader("Bulk Omics Analysis")
-            template_df = pd.DataFrame(columns=['Patient_ID'] + all_features)
-            template_df.loc[0] = ['Sample_001'] + [0.0] * len(all_features)
-            buffer = io.BytesIO()
-            template_df.to_csv(buffer, index=False)
-            st.download_button(" Download Feature Template", data=buffer.getvalue(), file_name="multinet_template.csv", mime="text/csv")
-            
-            up_file = st.file_uploader("Upload Patient Cohort (CSV)", type=["csv"])
-            if up_file:
-                df = pd.read_csv(up_file)
-                if all(f in df.columns for f in all_features):
-                    df['Risk'] = model.predict_proba(df[all_features])[:, 1]
-                    st.bar_chart(df.set_index('Patient_ID')['Risk'], color="#004080")
-                    st.dataframe(df[['Patient_ID', 'Risk']])
-
-# --- PAGE 2: PATHWAYS ---
+# --- PAGE 2: PATHWAYS & INTEGRATED REFERENCE ---
 elif app_mode == "Pathways & Genomics":
-    st.title("🕸️ Genomic Signaling Pathways")
+    st.title("🕸️ Genomic Signaling Mapping")
     
-    if pathways:
-        st.markdown("""
-        ### **Functional Enrichment Engine**
-        The `gbm_pathways.pkl` asset provides context by mapping raw data to metabolic and structural pathways. 
-        Current surveillance is focused on the **Epithelial-Mesenchymal Transition (EMT)** and **Glycolytic** pathways.
-        """)
-        targets = ["ACTB", "CDH1", "CTIF", "GAPDH", "OGDHL", "PDHB", "PRKCZ", "PRSS1", "SGTB", "VIM"]
-        st.info(f"**Critical Monitoring Targets:** {', '.join(targets)}")
-        st.write("This module cross-references these targets against standard oncogenic signaling databases.")
-
-# --- PAGE 3: RESEARCH LIBRARY ---
-elif app_mode == "Research Library":
-    st.title("📚 Multi-Omic Reference Library")
+    st.markdown("### **Functional Enrichment & Biomarker Lookup**")
     
-    if biomarker_ref and 'top_targets_df' in biomarker_ref:
-        st.write("Reference database for global feature importance weights.")
-        search = st.text_input("Enter Gene Symbol (e.g., VIM, TNC)")
-        df = biomarker_ref['top_targets_df']
-        if search:
-            df = df[df.astype(str).apply(lambda x: search.lower() in x.str.lower().any(), axis=1)]
-        st.dataframe(df, use_container_width=True)
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        st.info("**Key Monitored Genes:** ACTB, CDH1, CTIF, GAPDH, OGDHL, PDHB, PRKCZ, PRSS1, SGTB, VIM")
+        st.write("Cross-referencing expression with the `gbm_pathways.pkl` engine...")
 
-# --- PAGE 4: DETAILED TECHNICAL DOCUMENTATION ---
-elif app_mode == "Technical Documentation":
-    st.title("📘 MultiNet-AI Pro: Full Technical Manual")
+    with col2:
+        if biomarker_ref:
+            st.write("**Global Feature Importance Search**")
+            search = st.text_input("Enter Gene Symbol (e.g., TNC, VIM)")
+            df = biomarker_ref['top_targets_df']
+            if search: 
+                df = df[df.astype(str).apply(lambda x: search.lower() in x.str.lower().any(), axis=1)]
+                st.dataframe(df, use_container_width=True)
+
+# --- PAGE 3: PERSONALIZED DOCUMENTATION ---
+elif app_mode == "App Documentation":
+    st.title("📖 MultiNet-AI Technical Documentation")
+    st.markdown("Welcome to the documentation tab! Below you’ll find a detailed, step-by-step guide to what each section of the MultiNet-AI diagnostic workflow does and how to use it.")
+
+    # --- SECTION 1 ---
+    st.markdown('<div class="doc-section"><div class="step-header">① Generate Aggregated Diagnostic Files</div>', unsafe_allow_html=True)
+    st.markdown("""
+    **1. Upload your multi-omic abundance file (.CSV)**
+    Reads your raw input data and returns a curated list of biomarkers with the highest diagnostic potential.
+    
+    **How it works:**
+    * **Feature Alignment:** Reads the uploaded CSV and maps headers to the 23,000+ features in the `gbm_diagnostic_model-1.pkl`.
+    * **Normalization:** Standardizes raw counts to ensure parity between RNA-seq and proteomic data.
+    * **Importance Sorting:** Identifies the top 10 "Diagnostic Drivers" based on global gain weights and presents them for manual verification.
+    """)
+    
     
     st.markdown("""
-    <div class="doc-card">
-        <h3>1. Algorithmic Architecture</h3>
-        <p>The system uses an <b>XGBoost Ensemble</b> (Extreme Gradient Boosting) framework. 
-        It is specifically optimized for high-dimensional, low-sample data (23,000+ features). 
-        The primary diagnostic objective is binary logistic classification:</p>
-        $$P(y=1|x) = \frac{1}{1 + e^{-\sum f_i(x)}}$$
-        <p>Where $f_i$ represents the decision trees stored in <b>gbm_diagnostic_model-1.pkl</b>.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
+    **2. Select your diagnostic design module**
+    There are two different modules that MultiNet-AI Pro can use to verify a disease signature:
     
+    * **Module 1 (Pathways):** Verifies the carcinogenic properties of the filtered features using the **Genomic Pathways Engine**. This module categorizes genes based on their role in signaling pathways (e.g., EMT, Metabolism).
+    * **Module 2 (Detector):** More specific cross-validation. This module enters the raw values into the **Metabolic Detector** to ensure that the primary model's prediction is backed by specific metabolite and RNA indicators.
+    """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- SECTION 2 ---
+    st.markdown('<div class="doc-section"><div class="step-header">② Process Aggregated Files & Rank Biomarkers</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="doc-card">
-        <h3>2. Asset Integration Matrix</h3>
-        <ul>
-            <li><b>Detector Validation:</b> <i>gbm_detector.pkl</i> utilizes a focused subset of features to provide a metabolic cross-check.</li>
-            <li><b>Pathway Mapping:</b> <i>gbm_pathways.pkl</i> assigns biological relevance to the statistical importance scores.</li>
-            <li><b>Feature Engineering:</b> The model accounts for 23,412 omic features, aligned across RNA-seq and Proteomic profiles.</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
+    Once you have run the consensus analysis, the system calculates the following characteristics used for ranking the biomarkers via machine learning (logistic regression):
     
+    * **Binding Potential:** Predicted affinity of the molecular profile to known GBM signatures.
+    * **Aliphatic Index:** The relative volume occupied by non-aromatic side chains in the feature set. A higher index often correlates with greater structural stability of the protein markers.
+    * **GRAVY Score:** The arithmetic mean of hydropathy values. Affects how biomarkers interact with both the aqueous environment and the diagnostic sensors.
+    * **Instability Index:** A score predicting whether the biomarker remains intact under clinical assay conditions.
+    * **Toxicity & IFN-γ Release:** Predictions of whether the biomarker signature represents a valid therapeutic target or an inflammatory response.
+    """)
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- SECTION 3 ---
+    st.markdown('<div class="doc-section"><div class="step-header">③ Resultant Analytics & Download</div>', unsafe_allow_html=True)
     st.markdown("""
-    <div class="doc-card">
-        <h3>3. Operational Workflow (Detailed)</h3>
-        <ol>
-            <li><b>Feature Alignment:</b> The interface forces inputs into a standard vector of 23,412 dimensions. Missing values are imputed as zero.</li>
-            <li><b>Impact Calculation:</b> Local explainability is derived by multiplying the standardized abundance $x_i$ by the global gain importance $w_i$.</li>
-            <li><b>Result Thresholding:</b> A consensus logic is applied. If Diagnostic Probability > 0.50 AND Validation Score > 0.50, the system flags the sample as "High Confidence Positive".</li>
-        </ol>
-    </div>
-    """, unsafe_allow_html=True)
+    After clicking the submission button, the system generates:
+    * **Consensus Probability:** A score from **0.0 to 1.0**. Higher numbers indicate a higher probability of a GBM-Positive result.
+    * **Local Impact Chart:** Visualizes which specific biomarker contributed most to the final decision for *that specific patient*.
+    * **Final Aggregated Report:** You can download the full processed results in `.xlsx` format for clinical reporting.
+    """)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PAGE 5: INTERACTIVE DEMO ---
-elif app_mode == "Interactive Demo":
+# --- PAGE 4: DEMO ---
+elif app_mode == "Interactive Demo Walkthrough":
     st.title("🧪 Scenario Simulation")
     if diag:
-        model = diag['model']
-        all_features = diag['features']
-        top_10 = pd.DataFrame({'f': all_features, 'i': model.feature_importances_}).sort_values('i', ascending=False)['f'].head(10).tolist()
-        
         c1, c2 = st.columns(2)
-        sim_data = None
-        if c1.button("Simulate Control (Healthy)"):
-            sim_data = {f: [5.0] for f in all_features}
-        if c2.button("Simulate GBM (Malignant)"):
-            sim_data = {f: [0.0] for f in all_features}
-            for f in top_10: sim_data[f] = [8000.0]
-
-        if sim_data:
-            prob = model.predict_proba(pd.DataFrame(sim_data))[0][1]
-            st.write(f"### Simulated Prediction: {prob:.2%}")
-            st.progress(float(prob))
-            st.table(pd.DataFrame([{"Biomarker": f, "Simulated Value": sim_data[f][0]} for f in top_10]))
+        sim = None
+        if c1.button("Simulate Healthy Profile"): sim = {f: [5.0] for f in diag['features']}
+        if c2.button("Simulate GBM-Positive Profile"): 
+            sim = {f: [1.0] for f in diag['features']}
+            for f in diag['features'][:10]: sim[f] = [9000.0]
+        if sim:
+            p = diag['model'].predict_proba(pd.DataFrame(sim))[0][1]
+            st.metric("Simulated Risk Score", f"{p:.2%}")
+            st.progress(float(p))
