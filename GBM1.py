@@ -15,8 +15,8 @@ st.markdown("""
         header[data-testid="stHeader"] { background-color: #003366 !important; }
         section[data-testid="stSidebar"] { background-color: #001f3f !important; }
         [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #e6f2ff !important; }
-        div[data-testid="stNumberInput"] div[data-baseweb="input"] {
-            background-color: #ffffff !important; border-radius: 8px !important; border: 2px solid #0056b3 !important;
+        div[data-testid="stNumberInput"] div[data-baseweb="input"], div[data-baseweb="slider"] {
+            background-color: #ffffff !important; border-radius: 8px !important; 
         }
         div.stButton > button {
             background-color: #004080 !important; color: white !important; border: none !important;
@@ -72,13 +72,10 @@ elif app_mode == "🩺 Diagnostic Interface":
     if diag:
         model = diag['model']
         all_features = diag['features']
-        # Extract and sort Top 10 immediately
         feat_df = pd.DataFrame({'feature': all_features, 'importance': model.feature_importances_}).sort_values(by='importance', ascending=False)
         top_10 = feat_df['feature'].head(10).tolist()
 
         st.subheader("🧬 High-Significance Biomarkers (Top 10)")
-        st.write("The model prioritizes these genes for the primary diagnostic decision:")
-        
         tab1, tab2 = st.tabs(["Manual Abundance Entry", "Bulk CSV Analysis"])
         
         with tab1:
@@ -96,10 +93,8 @@ elif app_mode == "🩺 Diagnostic Interface":
 
         with tab2:
             st.subheader("Bulk Data Pipeline")
-            # Present top 10 first in the CSV template as requested
             ordered_template_cols = top_10 + [f for f in all_features if f not in top_10]
             template_df = pd.DataFrame(columns=['Patient_ID'] + ordered_template_cols)
-            
             buffer = io.BytesIO()
             template_df.to_csv(buffer, index=False)
             st.download_button("Download Requirements-Aligned CSV Template", data=buffer.getvalue(), file_name="MultiNet_Template.csv")
@@ -112,66 +107,81 @@ elif app_mode == "🩺 Diagnostic Interface":
                     st.bar_chart(bulk_df.set_index('Patient_ID')['Risk_Score'])
                     st.dataframe(bulk_df[['Patient_ID', 'Risk_Score']])
 
-# --- PAGE 2: DETAILED DOCUMENTATION ---
+# --- PAGE 2: DOCUMENTATION ---
 elif app_mode == "📖 App Documentation":
     st.title("Documentation & User Guide")
     
-    with st.container():
-        st.markdown('<div class="doc-section"><div class="step-header">I. User Interface Overview</div>', unsafe_allow_html=True)
-        st.write("""
-        MultiNet-AI Pro is divided into four main functional areas:
-        1. **Home:** Branding and entry portal.
-        2. **Diagnostic Interface:** The core processing engine for manual and bulk data.
-        3. **Documentation:** This comprehensive guide.
-        4. **Interactive Demo:** A sandbox for testing model sensitivity with dynamic data.
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="doc-section"><div class="step-header">I. Diagnostic Processing & Inputs</div>', unsafe_allow_html=True)
+    st.write("""
+    The MultiNet-AI GUI is designed for precision-oncology workflows. Users should provide **Raw Abundance Scores** (standardized counts or intensity values) for multi-omic features. 
+    
+    **Workflow Stages:**
+    1. **Data Ingestion:** The system accepts single-entry manual values or batch CSV uploads.
+    2. **Feature Mapping:** It automatically aligns inputs to the Top 10 diagnostic drivers identified during model training.
+    3. **Consensus Scoring:** The backend runs the XGBoost primary classifier and cross-references results with the Metabolic Detector.
+    """)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown('<div class="doc-section"><div class="step-header">II. How Processing Works (Backend)</div>', unsafe_allow_html=True)
-        st.write("""
-        The system utilizes an **XGBoost Classifier** trained on 23,412 multi-omic features. 
-        When a user submits data, the system:
-        - Maps input values to high-gain features (Top 10 Biomarkers).
-        - Runs a dual-check via the `gbm_detector.pkl` to validate metabolic consistency.
-        - Calculates the risk probability using localized weights ($Value \\times Weight$).
-        """)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="doc-section"><div class="step-header">II. Visual Evidence & Interpretability</div>', unsafe_allow_html=True)
+    st.write("""
+    - **Impact Charts:** Visualize how much weight each biomarker contributed to the final probability score.
+    - **Pathways Mapping:** Displays the biological context (EMT, Metabolic Pathways, etc.) of the flagged biomarkers.
+    """)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    with st.container():
-        st.markdown('<div class="doc-section"><div class="step-header">III. Data Requirements & User Input</div>', unsafe_allow_html=True)
-        st.write("""
-        - **Manual Entry:** Requires raw abundance scores for the Top 10 genes (e.g., VIM, GAPDH).
-        - **Bulk Entry:** Requires a CSV containing columns for all 23k features. User must use the provided template to ensure column alignment.
-        - **Visualization:** The GUI offers real-time bar charts and risk-probability metrics.
-        """)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-
-# --- PAGE 3: DYNAMIC DEMO (Randomized Dummy Data) ---
+# --- PAGE 3: DYNAMIC DEMO (Top 10 Focused) ---
 elif app_mode == "🧪 Interactive Demo Walkthrough":
-    st.title("Dynamic Demo Walkthrough")
-    st.write("This module generates **randomized** dummy data vectors to show the model's response to fluctuating omic levels.")
+    st.title("Top 10 Biomarker Sensitivity Lab")
+    st.write("Adjust the sliders for the **Top 10 Markers** below to see how they influence the prediction in real-time. Background noise for the other 23,000+ features is randomized with every change.")
     
     if diag:
-        if st.button("Generate & Process New Random Sample"):
-            # Generate truly random baseline data for all 23k features
-            random_base = np.random.uniform(0.0, 50.0, size=(1, len(diag['features'])))
-            sim_df = pd.DataFrame(random_base, columns=diag['features'])
+        model = diag['model']
+        all_features = diag['features']
+        feat_df = pd.DataFrame({'feature': all_features, 'importance': model.feature_importances_}).sort_values(by='importance', ascending=False)
+        top_10_markers = feat_df['feature'].head(10).tolist()
+        
+        # UI for adjusting Top 10
+        st.subheader("🎚️ Dynamic Biomarker Controls")
+        cols = st.columns(2)
+        demo_inputs = {}
+        for i, gene in enumerate(top_10_markers):
+            demo_inputs[gene] = cols[i % 2].slider(f"Abundance: {gene}", 0.0, 10000.0, 50.0)
             
-            # Randomly spike the top biomarkers to see how risk shifts
-            spike_intensity = np.random.randint(500, 10000)
-            target_genes = diag['features'][:5]
-            sim_df[target_genes] = spike_intensity
+        # Generate random biological noise for background genes
+        # We use a state seed based on the sum of inputs to keep it responsive but "random"
+        np.random.seed(int(sum(demo_inputs.values())))
+        random_noise = np.random.uniform(0.0, 20.0, size=(1, len(all_features)))
+        sim_df = pd.DataFrame(random_noise, columns=all_features)
+        
+        # Inject the slider values into the Top 10 positions
+        for gene, val in demo_inputs.items():
+            sim_df[gene] = val
             
-            prob = diag['model'].predict_proba(sim_df)[0][1]
-            
-            st.subheader("Simulated Result")
-            c1, c2 = st.columns(2)
-            c1.metric("Dynamic Risk Score", f"{prob:.2%}")
-            c2.write(f"Applied Spike Intensity: **{spike_intensity}** across primary markers.")
-            
+        # Prediction
+        prob = model.predict_proba(sim_df)[0][1]
+        
+        st.divider()
+        res_col1, res_col2 = st.columns([1, 2])
+        
+        with res_col1:
+            st.write("### Prediction Results")
+            st.metric("Live Probability", f"{prob:.2%}")
+            if prob > 0.5:
+                st.error("MODEL STATUS: GBM POSITIVE")
+            else:
+                st.success("MODEL STATUS: NEGATIVE")
             st.progress(float(prob))
-            st.bar_chart(sim_df[diag['features'][:10]].T)
-            st.info("Every click generates a new, unique data profile to test model robustness.")
+
+        with res_col2:
+            st.write("### Weighted Contribution (Top 10)")
+            # Calculate local impact for visualization
+            impact_data = []
+            for gene in top_10_markers:
+                weight = feat_df[feat_df['feature'] == gene]['importance'].values[0]
+                impact_data.append({"Gene": gene, "Impact Score": demo_inputs[gene] * weight})
+            
+            st.bar_chart(pd.DataFrame(impact_data).set_index("Gene"), color="#004080")
+
+        st.info("Notice: Increasing high-importance markers like VIM or GAPDH will spike the probability much faster than lower-ranked genes.")
