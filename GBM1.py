@@ -110,16 +110,21 @@ app_mode = st.sidebar.radio(
     ["Home", "🩺 Input your own omics data", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
 )
 
-# --- PAGE 0: HOME PAGE ---
-if app_mode == " Home":
+if app_mode == "Home":
     st.title("Welcome to MultiNet-AI")
     st.markdown("### Personalized Glioblastoma Diagnostic Page")
     
-    uploaded_logo = st.file_uploader("Upload Main Interface Image (Logo/Branding)", type=["png", "jpg", "jpeg"])
+    # Use a local file or a URL
+    # st.image("logo.png", use_container_width=True) 
+    
+    # Or keep the uploader but provide a default
+    uploaded_logo = st.file_uploader("Upload Branding Image", type=["png", "jpg", "jpeg"])
+    
     if uploaded_logo:
         st.image(uploaded_logo, use_container_width=True)
     else:
-        st.info("Please upload your main page image above to customize the dashboard.")
+        # Placeholder for when no file is uploaded - you can use a URL here
+        st.image("https://via.placeholder.com/800x400.png?text=MultiNet-AI+System+Overview", use_container_width=True)
     
     st.divider()
     st.markdown("""
