@@ -89,7 +89,7 @@ app_mode = st.sidebar.radio(
 
 # --- PAGE 1: DIAGNOSTIC INTERFACE ---
 if app_mode == "Diagnostic Interface":
-    st.title("💠 Glioblastoma Multi-Model Diagnosis")
+    st.title("🧬 MultiNet_AI")
     if diag and detector:
         model = diag['model']
         all_features = diag['features']
@@ -120,9 +120,9 @@ if app_mode == "Diagnostic Interface":
                     res_col2.metric("Validation Score", f"{p_det:.2%}")
 
                     if p_diag > 0.5:
-                        st.error("🚨 RESULT: POSITIVE - High correlation with GBM molecular signature.")
+                        st.error(" RESULT: POSITIVE - High correlation with GBM molecular signature.")
                     else:
-                        st.success("✅ RESULT: NEGATIVE - Sample aligns with healthy/control baseline.")
+                        st.success(" RESULT: NEGATIVE - Sample aligns with healthy/control baseline.")
 
                     st.subheader("Local Interpretability Map")
                     impact = pd.DataFrame([{"Biomarker": f, "Risk Impact": user_inputs[f] * feat_df[feat_df['feature']==f]['importance'].values[0]} for f in top_10]).set_index("Biomarker")
@@ -134,7 +134,7 @@ if app_mode == "Diagnostic Interface":
             template_df.loc[0] = ['Sample_001'] + [0.0] * len(all_features)
             buffer = io.BytesIO()
             template_df.to_csv(buffer, index=False)
-            st.download_button("📥 Download 23k Feature Template", data=buffer.getvalue(), file_name="multinet_template.csv", mime="text/csv")
+            st.download_button(" Download Feature Template", data=buffer.getvalue(), file_name="multinet_template.csv", mime="text/csv")
             
             up_file = st.file_uploader("Upload Patient Cohort (CSV)", type=["csv"])
             if up_file:
