@@ -11,20 +11,81 @@ st.set_page_config(page_title="MultiNet-AI| Blue Edition", layout="wide")
 # PROFESSIONAL NAVY BLUE THEME CSS
 st.markdown("""
     <style>
-        .stApp, .stMain, [data-testid="stAppViewContainer"], .main { background-color: #f0f4f8 !important; }
-        header[data-testid="stHeader"] { background-color: #003366 !important; }
-        section[data-testid="stSidebar"] { background-color: #001f3f !important; }
-        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p { color: #e6f2ff !important; }
+        /* 1. THE ACTUAL FULL PAGE BACKGROUND */
+        .stApp, .stMain, [data-testid="stAppViewContainer"], .main {
+            background-color: #FFFFFF !important;
+        }
+
+        /* 2. TOP HEADER BAR */
+        header[data-testid="stHeader"] {
+            background-color: #1f77b4 !important;
+        }
+
+        /* 3. SIDEBAR - Navy Blue */
+        section[data-testid="stSidebar"] {
+            background-color: #0d3b4c !important;
+        }
+
+        /* Sidebar Text to White */
+        [data-testid="stSidebar"] h1, [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
+            color: white !important;
+        }
+
+        /* 4. MANUAL ENTRY: Input Box Background */
         div[data-testid="stNumberInput"] div[data-baseweb="input"], div[data-baseweb="slider"] {
-            background-color: #ffffff !important; border-radius: 8px !important; 
+            background-color: #cce6ff !important; 
+            border-radius: 8px !important;
+            border: 1px solid #1f77b4 !important;
         }
+
+        /* Style the +/- buttons inside the input boxes */
+        button[data-testid="stNumberInputStepUp"], 
+        button[data-testid="stNumberInputStepDown"] {
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border-radius: 4px !important;
+        }
+
+        /* 5. BUTTONS */
         div.stButton > button {
-            background-color: #004080 !important; color: white !important; border: none !important;
-            font-weight: bold !important; height: 3em !important; border-radius: 8px !important;
+            background-color: #1f77b4 !important;
+            color: white !important;
+            border: none !important;
+            font-weight: bold !important;
+            width: 100% !important;
+            border-radius: 6px !important;
         }
-        div.stButton > button:hover { background-color: #0056b3 !important; }
-        .doc-section { background-color: #ffffff; padding: 25px; border-radius: 12px; border-left: 8px solid #003366; margin-bottom: 20px; }
-        .step-header { color: #003366; font-weight: bold; font-size: 1.5em; margin-bottom: 10px; }
+        
+        div.stButton > button:hover {
+            background-color: #155a8a !important;
+        }
+
+        /* 6. TABS & LABELS */
+        div[data-baseweb="tab-highlight"] {
+            background-color: #1f77b4 !important;
+        }
+
+        button[aria-selected="true"] p {
+            color: #1f77b4 !important;
+            font-weight: bold !important;
+        }
+
+        /* Biomarker Names label styling */
+        .stNumberInput label p {
+            color: #0d3b4c !important;
+            font-weight: bold !important;
+        }
+        
+        /* Documentation Styling */
+        .doc-section { 
+            background-color: #f8fbff; 
+            padding: 25px; 
+            border-radius: 12px; 
+            border-left: 8px solid #1f77b4; 
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .step-header { color: #0d3b4c; font-weight: bold; font-size: 1.5em; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -46,11 +107,11 @@ diag, detector, pathways, biomarker_ref = load_assets()
 st.sidebar.title("💎 MultiNet-AI Pro")
 app_mode = st.sidebar.radio(
     "Navigation",
-    ["🏠 Home", "🩺 Diagnostic Interface", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
+    ["Home", "🩺 Diagnostic Interface", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
 )
 
 # --- PAGE 0: HOME PAGE ---
-if app_mode == "🏠 Home":
+if app_mode == " Home":
     st.title("Welcome to MultiNet-AI Pro")
     st.markdown("### Personalized Glioblastoma Diagnostic Suite")
     
@@ -133,8 +194,8 @@ elif app_mode == "📖 App Documentation":
 
 # --- PAGE 3: DYNAMIC DEMO (Top 10 Focused) ---
 elif app_mode == "🧪 Interactive Demo Walkthrough":
-    st.title("Top 10 Biomarker Sensitivity Lab")
-    st.write("Adjust the sliders for the **Top 10 Markers** below to see how they influence the prediction in real-time. Background noise for the other 23,000+ features is randomized with every change.")
+    st.title("Demo Walkthrough")
+    st.write("Adjust the sliders for the **Top 10 Markers** below to see how they influence the prediction in real-time. ")
     
     if diag:
         model = diag['model']
@@ -143,7 +204,7 @@ elif app_mode == "🧪 Interactive Demo Walkthrough":
         top_10_markers = feat_df['feature'].head(10).tolist()
         
         # UI for adjusting Top 10
-        st.subheader("🎚️ Dynamic Biomarker Controls")
+        st.subheader("🎚️ Biomarker Entry for interactive demo walkthrough")
         cols = st.columns(2)
         demo_inputs = {}
         for i, gene in enumerate(top_10_markers):
