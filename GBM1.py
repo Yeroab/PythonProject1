@@ -107,7 +107,7 @@ diag, detector, pathways, biomarker_ref = load_assets()
 st.sidebar.title("💎 MultiNet-AI")
 app_mode = st.sidebar.radio(
     "Navigation",
-    ["Home", "🩺 Input your own omics data", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
+    ["Home", "📖 App Documentation", "🩺 Input your own omics data", "🧪 Interactive Demo Walkthrough"]
 )
 
 # --- PAGE 0: HOME PAGE ---
@@ -128,77 +128,6 @@ if app_mode == "Home":
     This platform integrates high-dimensional multi-omics data with gradient-boosted machine learning to provide 
     real-time diagnostic insights into Glioblastoma Multiforme (GBM).
     """)
-# --- PAGE 1: DIAGNOSTIC INTERFACE (Top 10 First) ---
-elif app_mode == "🩺 Input your own omics data":
-    st.title("User Analysis Page")
-    if diag:
-        model = diag['model']
-        all_features = diag['features']
-        feat_df = pd.DataFrame({'feature': all_features, 'importance': model.feature_importances_}).sort_values(by='importance', ascending=False)
-        top_10 = feat_df['feature'].head(10).tolist()
-
-        st.subheader("🧬 High-Significance Biomarkers (Top 10)")
-        tab1, tab2 = st.tabs(["Manual Abundance Entry", "Bulk CSV Analysis"])
-        
-        with tab1:
-            with st.form("manual_entry"):
-                st.write("### Enter Raw Abundance Value")
-                cols = st.columns(2)
-                # We use the top_10 list defined earlier in the code
-                user_inputs = {feat: cols[i % 2].number_input(f"{feat}", value=10.0) for i, feat in enumerate(top_10)}
-                submit = st.form_submit_button("RUN DIAGNOSTIC CONSENSUS")
-                
-                if submit:
-                    # 1. Prepare full feature vector (23k features)
-                    # We fill background features with a baseline low value (5.0)
-                    full_input = pd.DataFrame({f: [user_inputs.get(f, 5.0)] for f in all_features})
-                    
-                    # 2. Generate Prediction
-                    prob = model.predict_proba(full_input)[0][1]
-                    
-                    # 3. Display Metrics
-                    st.divider()
-                    st.metric("Probability of GBM Signature", f"{prob:.2%}")
-                    if prob > 0.5: 
-                        st.error("CONSENSUS: POSITIVE SIGNATURE DETECTED")
-                    else: 
-                        st.success("CONSENSUS: NEGATIVE SIGNATURE")
-
-                    # 4. DATA VISUALIZATION: The Impact Bar Chart
-                    st.write("### 📊 Local Feature Impact")
-                    st.caption("This graph shows the weighted contribution of your inputs to the total risk score.")
-                    
-                    # Calculate: Input Value * Global Model Importance
-                    impact_list = []
-                    for feat in top_10:
-                        # Extract the specific weight for this gene from our importance dataframe
-                        weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
-                        impact_list.append({
-                            "Biomarker": feat, 
-                            "Diagnostic Impact": user_inputs[feat] * weight
-                        })
-                    
-                    # Create DataFrame and plot
-                    plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
-                    st.bar_chart(plot_df, color="#1f77b4")
-                
-
-        with tab2:
-            st.subheader("Bulk Data Pipeline")
-            ordered_template_cols = top_10 + [f for f in all_features if f not in top_10]
-            template_df = pd.DataFrame(columns=['Patient_ID'] + ordered_template_cols)
-            buffer = io.BytesIO()
-            template_df.to_csv(buffer, index=False)
-            st.download_button("Download Requirements-Aligned CSV Template", data=buffer.getvalue(), file_name="MultiNet_Template.csv")
-            
-            up = st.file_uploader("Upload Patient Cohort CSV", type=["csv"])
-            if up:
-                bulk_df = pd.read_csv(up)
-                if set(all_features).issubset(bulk_df.columns):
-                    bulk_df['Risk_Score'] = model.predict_proba(bulk_df[all_features])[:, 1]
-                    st.bar_chart(bulk_df.set_index('Patient_ID')['Risk_Score'])
-                    st.dataframe(bulk_df[['Patient_ID', 'Risk_Score']])
-
 # --- PAGE 2: APP DOCUMENTATION (EVERY WORD INCLUDED) ---
 elif app_mode == "📖 App Documentation":
     st.title("MultiNet-AI Web Application Documentation")
@@ -293,6 +222,77 @@ elif app_mode == "📖 App Documentation":
         """)
         
         st.markdown('</div>', unsafe_allow_html=True)
+# --- PAGE 1: DIAGNOSTIC INTERFACE (Top 10 First) ---
+elif app_mode == "🩺 Input your own omics data":
+    st.title("User Analysis Page")
+    if diag:
+        model = diag['model']
+        all_features = diag['features']
+        feat_df = pd.DataFrame({'feature': all_features, 'importance': model.feature_importances_}).sort_values(by='importance', ascending=False)
+        top_10 = feat_df['feature'].head(10).tolist()
+
+        st.subheader("🧬 High-Significance Biomarkers (Top 10)")
+        tab1, tab2 = st.tabs(["Manual Abundance Entry", "Bulk CSV Analysis"])
+        
+        with tab1:
+            with st.form("manual_entry"):
+                st.write("### Enter Raw Abundance Value")
+                cols = st.columns(2)
+                # We use the top_10 list defined earlier in the code
+                user_inputs = {feat: cols[i % 2].number_input(f"{feat}", value=10.0) for i, feat in enumerate(top_10)}
+                submit = st.form_submit_button("RUN DIAGNOSTIC CONSENSUS")
+                
+                if submit:
+                    # 1. Prepare full feature vector (23k features)
+                    # We fill background features with a baseline low value (5.0)
+                    full_input = pd.DataFrame({f: [user_inputs.get(f, 5.0)] for f in all_features})
+                    
+                    # 2. Generate Prediction
+                    prob = model.predict_proba(full_input)[0][1]
+                    
+                    # 3. Display Metrics
+                    st.divider()
+                    st.metric("Probability of GBM Signature", f"{prob:.2%}")
+                    if prob > 0.5: 
+                        st.error("CONSENSUS: POSITIVE SIGNATURE DETECTED")
+                    else: 
+                        st.success("CONSENSUS: NEGATIVE SIGNATURE")
+
+                    # 4. DATA VISUALIZATION: The Impact Bar Chart
+                    st.write("### 📊 Local Feature Impact")
+                    st.caption("This graph shows the weighted contribution of your inputs to the total risk score.")
+                    
+                    # Calculate: Input Value * Global Model Importance
+                    impact_list = []
+                    for feat in top_10:
+                        # Extract the specific weight for this gene from our importance dataframe
+                        weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
+                        impact_list.append({
+                            "Biomarker": feat, 
+                            "Diagnostic Impact": user_inputs[feat] * weight
+                        })
+                    
+                    # Create DataFrame and plot
+                    plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
+                    st.bar_chart(plot_df, color="#1f77b4")
+                
+
+        with tab2:
+            st.subheader("Bulk Data Pipeline")
+            ordered_template_cols = top_10 + [f for f in all_features if f not in top_10]
+            template_df = pd.DataFrame(columns=['Patient_ID'] + ordered_template_cols)
+            buffer = io.BytesIO()
+            template_df.to_csv(buffer, index=False)
+            st.download_button("Download Requirements-Aligned CSV Template", data=buffer.getvalue(), file_name="MultiNet_Template.csv")
+            
+            up = st.file_uploader("Upload Patient Cohort CSV", type=["csv"])
+            if up:
+                bulk_df = pd.read_csv(up)
+                if set(all_features).issubset(bulk_df.columns):
+                    bulk_df['Risk_Score'] = model.predict_proba(bulk_df[all_features])[:, 1]
+                    st.bar_chart(bulk_df.set_index('Patient_ID')['Risk_Score'])
+                    st.dataframe(bulk_df[['Patient_ID', 'Risk_Score']])
+                    
 # --- PAGE 3: DYNAMIC DEMO (Top 10 Focused) ---
 elif app_mode == "🧪 Interactive Demo Walkthrough":
     st.title("Demo Walkthrough")
