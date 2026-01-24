@@ -104,16 +104,16 @@ def load_assets():
 diag, detector, pathways, biomarker_ref = load_assets()
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("💎 MultiNet-AI Pro")
+st.sidebar.title("💎 MultiNet-AI")
 app_mode = st.sidebar.radio(
     "Navigation",
-    ["Home", "🩺 Diagnostic Interface", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
+    ["Home", "🩺 Input your own omics data", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
 )
 
 # --- PAGE 0: HOME PAGE ---
 if app_mode == " Home":
-    st.title("Welcome to MultiNet-AI Pro")
-    st.markdown("### Personalized Glioblastoma Diagnostic Suite")
+    st.title("Welcome to MultiNet-AI")
+    st.markdown("### Personalized Glioblastoma Diagnostic Page")
     
     uploaded_logo = st.file_uploader("Upload Main Interface Image (Logo/Branding)", type=["png", "jpg", "jpeg"])
     if uploaded_logo:
@@ -128,7 +128,7 @@ if app_mode == " Home":
     """)
 
 # --- PAGE 1: DIAGNOSTIC INTERFACE (Top 10 First) ---
-elif app_mode == "🩺 Diagnostic Interface":
+elif app_mode == "🩺 Input your own omics data":
     st.title("Diagnostic Analysis")
     if diag:
         model = diag['model']
@@ -141,7 +141,7 @@ elif app_mode == "🩺 Diagnostic Interface":
         
         with tab1:
             with st.form("manual_entry"):
-                st.write("### 🧬 Enter Abundance for High-Gain Features")
+                st.write("### Enter Raw Abundance Value")
                 cols = st.columns(2)
                 # We use the top_10 list defined earlier in the code
                 user_inputs = {feat: cols[i % 2].number_input(f"{feat}", value=10.0) for i, feat in enumerate(top_10)}
