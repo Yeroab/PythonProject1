@@ -84,7 +84,7 @@ elif app_mode == "Pathways & Genomics":
     
     st.markdown("### **Functional Enrichment & Biomarker Lookup**")
     
-    col1, col2 = st.columns([1, 1])
+    col1, col2 = st.columns([1, 1.2])
     with col1:
         st.info("**Key Monitored Genes:** ACTB, CDH1, CTIF, GAPDH, OGDHL, PDHB, PRKCZ, PRSS1, SGTB, VIM")
         st.write("Cross-referencing expression with the `gbm_pathways.pkl` engine...")
@@ -95,8 +95,12 @@ elif app_mode == "Pathways & Genomics":
             search = st.text_input("Enter Gene Symbol (e.g., TNC, VIM)")
             df = biomarker_ref['top_targets_df']
             if search: 
-                df = df[df.astype(str).apply(lambda x: search.lower() in x.str.lower().any(), axis=1)]
-                st.dataframe(df, use_container_width=True)
+                # FIXED SEARCH LOGIC
+                mask = df.astype(str).apply(lambda row: row.str.contains(search, case=False).any(), axis=1)
+                filtered_df = df[mask]
+                st.dataframe(filtered_df, use_container_width=True)
+            else:
+                st.dataframe(df.head(10), use_container_width=True)
 
 # --- PAGE 3: PERSONALIZED DOCUMENTATION ---
 elif app_mode == "App Documentation":
@@ -112,7 +116,7 @@ elif app_mode == "App Documentation":
     **How it works:**
     * **Feature Alignment:** Reads the uploaded CSV and maps headers to the 23,000+ features in the `gbm_diagnostic_model-1.pkl`.
     * **Normalization:** Standardizes raw counts to ensure parity between RNA-seq and proteomic data.
-    * **Importance Sorting:** Identifies the top 10 "Diagnostic Drivers" based on global gain weights and presents them for manual verification.
+    * **Importance Sorting:** Identifies the top 10 "Diagnostic Drivers" based on global gain weights.
     """)
     
     
@@ -120,21 +124,21 @@ elif app_mode == "App Documentation":
     **2. Select your diagnostic design module**
     There are two different modules that MultiNet-AI Pro can use to verify a disease signature:
     
-    * **Module 1 (Pathways):** Verifies the carcinogenic properties of the filtered features using the **Genomic Pathways Engine**. This module categorizes genes based on their role in signaling pathways (e.g., EMT, Metabolism).
-    * **Module 2 (Detector):** More specific cross-validation. This module enters the raw values into the **Metabolic Detector** to ensure that the primary model's prediction is backed by specific metabolite and RNA indicators.
+    * **Module 1 (Pathways):** Verifies the carcinogenic properties of the filtered features using the **Genomic Pathways Engine**. 
+    * **Module 2 (Detector):** Specific cross-validation. This module enters the raw values into the **Metabolic Detector** to ensure that the primary model's prediction is backed by biological metabolite indicators.
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # --- SECTION 2 ---
     st.markdown('<div class="doc-section"><div class="step-header">② Process Aggregated Files & Rank Biomarkers</div>', unsafe_allow_html=True)
     st.markdown("""
-    Once you have run the consensus analysis, the system calculates the following characteristics used for ranking the biomarkers via machine learning (logistic regression):
+    The system calculates the following characteristics used for ranking the biomarkers via machine learning (logistic regression):
     
-    * **Binding Potential:** Predicted affinity of the molecular profile to known GBM signatures.
-    * **Aliphatic Index:** The relative volume occupied by non-aromatic side chains in the feature set. A higher index often correlates with greater structural stability of the protein markers.
-    * **GRAVY Score:** The arithmetic mean of hydropathy values. Affects how biomarkers interact with both the aqueous environment and the diagnostic sensors.
-    * **Instability Index:** A score predicting whether the biomarker remains intact under clinical assay conditions.
-    * **Toxicity & IFN-γ Release:** Predictions of whether the biomarker signature represents a valid therapeutic target or an inflammatory response.
+    * **Binding Potential:** Predicted affinity to known GBM signatures.
+    * **Aliphatic Index:** The relative volume occupied by non-aromatic side chains. Higher index correlates with greater structural stability.
+    * **GRAVY Score:** The arithmetic mean of hydropathy values. Affects solubility and biomarker interaction.
+    * **Instability Index:** Predicts whether the biomarker remains intact under clinical assay conditions.
+    * **Toxicity & IFN-γ Release:** Predictions of whether the signature represents a valid therapeutic target or a generic inflammatory response.
     """)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -143,8 +147,8 @@ elif app_mode == "App Documentation":
     st.markdown("""
     After clicking the submission button, the system generates:
     * **Consensus Probability:** A score from **0.0 to 1.0**. Higher numbers indicate a higher probability of a GBM-Positive result.
-    * **Local Impact Chart:** Visualizes which specific biomarker contributed most to the final decision for *that specific patient*.
-    * **Final Aggregated Report:** You can download the full processed results in `.xlsx` format for clinical reporting.
+    * **Local Impact Chart:** Visualizes which specific biomarker contributed most to the final decision.
+    * **Final Aggregated Report:** Export full results in `.xlsx` format for clinical reporting.
     """)
     
     st.markdown('</div>', unsafe_allow_html=True)
