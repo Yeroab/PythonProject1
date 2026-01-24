@@ -129,7 +129,7 @@ if app_mode == " Home":
 
 # --- PAGE 1: DIAGNOSTIC INTERFACE (Top 10 First) ---
 elif app_mode == "🩺 Input your own omics data":
-    st.title("Diagnostic Analysis")
+    st.title("User Analysis Page")
     if diag:
         model = diag['model']
         all_features = diag['features']
