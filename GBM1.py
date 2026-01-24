@@ -141,16 +141,46 @@ elif app_mode == "🩺 Diagnostic Interface":
         
         with tab1:
             with st.form("manual_entry"):
+                st.write("### 🧬 Enter Abundance for High-Gain Features")
                 cols = st.columns(2)
+                # We use the top_10 list defined earlier in the code
                 user_inputs = {feat: cols[i % 2].number_input(f"{feat}", value=10.0) for i, feat in enumerate(top_10)}
-                submit = st.form_submit_button("RUN DIAGNOSIS")
+                submit = st.form_submit_button("RUN DIAGNOSTIC CONSENSUS")
                 
                 if submit:
+                    # 1. Prepare full feature vector (23k features)
+                    # We fill background features with a baseline low value (5.0)
                     full_input = pd.DataFrame({f: [user_inputs.get(f, 5.0)] for f in all_features})
+                    
+                    # 2. Generate Prediction
                     prob = model.predict_proba(full_input)[0][1]
+                    
+                    # 3. Display Metrics
+                    st.divider()
                     st.metric("Probability of GBM Signature", f"{prob:.2%}")
-                    if prob > 0.5: st.error("CONSENSUS: POSITIVE")
-                    else: st.success("CONSENSUS: NEGATIVE")
+                    if prob > 0.5: 
+                        st.error("CONSENSUS: POSITIVE SIGNATURE DETECTED")
+                    else: 
+                        st.success("CONSENSUS: NEGATIVE SIGNATURE")
+
+                    # 4. DATA VISUALIZATION: The Impact Bar Chart
+                    st.write("### 📊 Local Feature Impact")
+                    st.caption("This graph shows the weighted contribution of your inputs to the total risk score.")
+                    
+                    # Calculate: Input Value * Global Model Importance
+                    impact_list = []
+                    for feat in top_10:
+                        # Extract the specific weight for this gene from our importance dataframe
+                        weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
+                        impact_list.append({
+                            "Biomarker": feat, 
+                            "Diagnostic Impact": user_inputs[feat] * weight
+                        })
+                    
+                    # Create DataFrame and plot
+                    plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
+                    st.bar_chart(plot_df, color="#1f77b4")
+                
 
         with tab2:
             st.subheader("Bulk Data Pipeline")
