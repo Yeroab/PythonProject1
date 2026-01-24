@@ -110,28 +110,24 @@ app_mode = st.sidebar.radio(
     ["Home", "🩺 Input your own omics data", "📖 App Documentation", "🧪 Interactive Demo Walkthrough"]
 )
 
+# --- PAGE 0: HOME PAGE ---
 if app_mode == "Home":
     st.title("Welcome to MultiNet-AI")
     st.markdown("### Personalized Glioblastoma Diagnostic Page")
     
-    # Use a local file or a URL
-    # st.image("logo.png", use_container_width=True) 
-    
-    # Or keep the uploader but provide a default
-    uploaded_logo = st.file_uploader("Upload Branding Image", type=["png", "jpg", "jpeg"])
-    
-    if uploaded_logo:
-        st.image(uploaded_logo, use_container_width=True)
-    else:
-        # Placeholder for when no file is uploaded - you can use a URL here
-        st.image("https://via.placeholder.com/800x400.png?text=MultiNet-AI+System+Overview", use_container_width=True)
+    # Attempt to load the logo from the local GitHub directory
+    try:
+        # If logo.png is in the root of your repo
+        st.image("logo.png", use_container_width=True)
+    except:
+        # Fallback if the file path isn't found during local testing
+        st.warning("Logo file not found. Ensure 'logo.png' is in your GitHub repository folder.")
     
     st.divider()
     st.markdown("""
     This platform integrates high-dimensional multi-omics data with gradient-boosted machine learning to provide 
     real-time diagnostic insights into Glioblastoma Multiforme (GBM).
     """)
-
 # --- PAGE 1: DIAGNOSTIC INTERFACE (Top 10 First) ---
 elif app_mode == "🩺 Input your own omics data":
     st.title("User Analysis Page")
