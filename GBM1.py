@@ -6,7 +6,7 @@ import io
 from PIL import Image
 
 # --- CONFIG & THEME ---
-st.set_page_config(page_title="MultiNet-AI Pro | Blue Edition", layout="wide")
+st.set_page_config(page_title="MultiNet-AI| Blue Edition", layout="wide")
 
 # PROFESSIONAL NAVY BLUE THEME CSS
 st.markdown("""
