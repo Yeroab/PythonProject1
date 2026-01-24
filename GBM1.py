@@ -162,12 +162,12 @@ elif app_mode == "App Documentation":
 
 # --- PAGE 4: DETAILED INTERACTIVE DEMO ---
 elif app_mode == "Interactive Demo Walkthrough":
-    st.title("🧪 In-Silico Scenario Simulation")
+    st.title("🧪 Mock Data Simulation")
     
     st.markdown("""
     The Demo Module is designed to illustrate the **Dynamic Sensitivity** of the XGBoost classifier. 
     By toggling between pre-set clinical profiles, users can observe how the multi-model architecture 
-    reacts to specific proteomic and transcriptomic signatures.
+    reacts to specific proteomic, transcriptomic, and metbolomic signatures.
     """)
 
     if diag:
@@ -219,8 +219,8 @@ elif app_mode == "Interactive Demo Walkthrough":
 
             st.subheader("3. Technical Breakdown of Simulation")
             st.write("""
-            * **Synthetic Ingestion:** The demo generates a vector of 23,412 values in memory, mimicking a full Partek Flow output.
-            * **Feature Weights:** Notice that even if 23,400 genes have low values, high values in the 'Top 10' (e.g., *VIM* or *GAPDH*) are weighted significantly enough to cross the 50% classification threshold.
+            * **Synthetic Ingestion:** The demo generates a vector of 23,412 values in memory.
+            * **Feature Weights:** Notice that even if all features have low values, high values in the 'Top 10' features are weighted significantly enough to cross the 50% classification threshold.
             * **Non-Linear Interaction:** The XGBoost trees evaluate the *combination* of these features, not just individual scores.
             """)
             
