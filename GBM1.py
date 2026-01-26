@@ -26,7 +26,6 @@ def render_upload_section():
         st.write("### Instructions")
         st.info("Upload a CSV with 843 columns. Use the template to ensure marker order matches MultiNet requirements.")
         
-        # Template Generation
         template_df = pd.DataFrame(columns=feature_names)
         csv = template_df.to_csv(index=False).encode('utf-8')
         st.download_button(
@@ -45,11 +44,10 @@ def process_batch(df):
     st.header("💾 Batch Processing Engine")
     
     if df.shape[1] != 843:
-        st.error(f"❌ Input Error: Expected 843 features, but detected {df.shape[1]}. Please check your CSV columns.")
+        st.error(f"❌ Input Error: Expected 843 features, but detected {df.shape[1]}.")
         return None
 
     with st.spinner("Analyzing population cohort..."):
-        # Inference
         probs = model.predict_proba(df)[:, 1]
         preds = (probs > 0.5).astype(int)
         
@@ -58,8 +56,7 @@ def process_batch(df):
         results.insert(1, "Risk Score", probs)
         
         st.success(f"Successfully processed {len(df)} patient samples.")
-        st.dataframe(results.iloc[:, :5].head(), use_container_width=True) # Show summary
-        
+        st.dataframe(results.iloc[:, :5].head(), use_container_width=True)
         return results
 
 # --- Section: 📊 INTERACTIVE DASHBOARD ---
@@ -69,7 +66,6 @@ def render_dashboard(results):
     c1, c2 = st.columns(2)
     
     with c1:
-        # Risk Distribution Histogram
         fig_hist = px.histogram(
             results, x="Risk Score", color="Prediction",
             title="Distribution of Patient Risk Scores",
@@ -79,9 +75,8 @@ def render_dashboard(results):
         st.plotly_chart(fig_hist, use_container_width=True)
 
     with c2:
-        # Markers Correlation Heatmap (Sample of top markers)
         st.write("### Marker Interaction (Top Features)")
-        top_10 = results.columns[2:12] # Visualizing first 10 for clarity
+        top_10 = results.columns[2:12] 
         corr = results[top_10].corr()
         fig_heat = px.imshow(corr, text_auto=True, title="Key Marker Correlations", color_continuous_scale='RdBu_r')
         st.plotly_chart(fig_heat, use_container_width=True)
@@ -89,23 +84,49 @@ def render_dashboard(results):
     # Individual Sample Deep Dive
     st.divider()
     st.subheader("🔍 Individual Patient Explorer")
+    
+    # Select Patient
     selected_idx = st.selectbox("Select Patient Row for Details", results.index)
     
-    # Radar Chart for Multi-modal Analysis
-    categories = ['Protein Expression', 'RNA Expression', 'Metabolites']
-    # Example logic to group features by suffix
-    prot_val = results.filter(like='_prot').iloc[selected_idx].mean()
-    rna_val = results.filter(like='_rna').iloc[selected_idx].mean()
-    met_val = results.filter(like='_met').iloc[selected_idx].mean()
+    # Get specific patient data (excluding the Prediction and Risk Score columns)
+    patient_data = results.iloc[selected_idx].drop(['Prediction', 'Risk_Score'], errors='ignore')
+    
+    col_left, col_right = st.columns([1, 2])
 
-    fig_radar = go.Figure(data=go.Scatterpolar(
-      r=[prot_val, rna_val, met_val],
-      theta=categories,
-      fill='toself',
-      name=f'Patient {selected_idx}'
-    ))
-    fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 1])), showlegend=True, title="Biological Profile Signature")
-    st.plotly_chart(fig_radar)
+    with col_left:
+        st.write("### Multi-Modal Summary")
+        categories = ['Protein Expression', 'RNA Expression', 'Metabolites']
+        prot_val = results.filter(like='_prot').iloc[selected_idx].mean()
+        rna_val = results.filter(like='_rna').iloc[selected_idx].mean()
+        met_val = results.filter(like='_met').iloc[selected_idx].mean()
+
+        fig_radar = go.Figure(data=go.Scatterpolar(
+            r=[prot_val, rna_val, met_val],
+            theta=categories,
+            fill='toself',
+            name=f'Patient {selected_idx}'
+        ))
+        fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True)), title="Biological Signature")
+        st.plotly_chart(fig_radar, use_container_width=True)
+
+    with col_right:
+        st.write("### Patient Marker Profile (Top 20 Markers)")
+        
+        # We sort the features for the specific patient to show the most active markers
+        patient_top_20 = patient_data.astype(float).sort_values(ascending=False).head(20)
+        
+        # Bar Chart for the specific patient
+        fig_bar = px.bar(
+            x=patient_top_20.values,
+            y=patient_top_20.index,
+            orientation='h',
+            title=f"Top Biomarkers for Patient {selected_idx}",
+            labels={'x': 'Expression Level / Value', 'y': 'Biological Marker'},
+            color=patient_top_20.values,
+            color_continuous_scale='Viridis'
+        )
+        fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_bar, use_container_width=True)
 
 # --- APP EXECUTION ---
 st.title("🧬 MultiNet_AI | Clinical Intelligence")
