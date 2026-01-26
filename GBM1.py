@@ -134,27 +134,25 @@ def render_dashboard(results, mode="manual", key_prefix=""):
                          color=top_20.values, color_continuous_scale='Viridis')
         st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar")
 
+# --- SIDEBAR NAVIGATION ---
+st.sidebar.title("🧬 MultiNet_AI")
+st.sidebar.markdown("---")
+page = st.sidebar.radio(
+    "Navigation",
+    ["🏠 Home", "📚 Documentation", "🔬 User Analysis", "🎬 Demo Walkthrough"]
+)
+
 # --- MAIN INTERFACE ---
 st.title("🧬 MultiNet_AI | GBM Clinical Diagnostic Suite")
 
-# Create main navigation tabs
-tab_home, tab_docs, tab_user, tab_demo = st.tabs([
-    "🏠 Home", 
-    "📚 Documentation", 
-    "🔬 User Analysis",
-    "🎬 Demo Walkthrough"
-])
-
 # ============================================================================
-# HOME TAB
+# HOME PAGE
 # ============================================================================
-with tab_home:
-    # Display logo centered
+if page == "🏠 Home":
+    # Display logo wide
     try:
         logo = Image.open('logo.png')
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.image(logo, use_container_width=True)
+        st.image(logo, use_container_width=True)
     except:
         st.info("Logo image not found. Please ensure 'logo.png' is in the root directory.")
     
@@ -163,15 +161,14 @@ with tab_home:
     st.markdown("<h3 style='text-align: center;'>GBM Clinical Diagnostic Suite</h3>", unsafe_allow_html=True)
 
 # ============================================================================
-# DOCUMENTATION TAB
+# DOCUMENTATION PAGE
 # ============================================================================
-with tab_docs:
+elif page == "📚 Documentation":
     st.header("📚 System Documentation")
     
-    doc_section = st.radio(
-        "Select Documentation Section:",
-        ["Overview", "Frontend Architecture", "Backend Architecture", "Data Requirements", "Model Information"],
-        horizontal=True
+    doc_section = st.sidebar.selectbox(
+        "Documentation Section:",
+        ["Overview", "Frontend Architecture", "Backend Architecture", "Data Requirements", "Model Information"]
     )
     
     if doc_section == "Overview":
@@ -214,8 +211,8 @@ with tab_docs:
         ### Component Structure
         
         #### 1. Navigation System
-        - **Tab-based Interface**: Four primary sections (Home, Documentation, User Analysis, Demo)
-        - **Persistent State**: Unique keys prevent widget conflicts across tabs
+        - **Sidebar Navigation**: Four primary sections (Home, Documentation, User Analysis, Demo)
+        - **Persistent State**: Unique keys prevent widget conflicts across pages
         - **Responsive Layout**: Columns adapt to screen size using `use_container_width`
         
         #### 2. Input Modules
@@ -353,7 +350,7 @@ with tab_docs:
         ### Performance Considerations
         
         - **Caching**: Model loaded once per session via `@st.cache_resource`
-        - **Lazy Loading**: Charts rendered only when tabs accessed
+        - **Lazy Loading**: Charts rendered only when pages accessed
         - **Memory**: Full 843-column DataFrames stored in session state
         - **Processing Time**: ~1-5 seconds for batch inference (100 patients)
         """)
@@ -408,7 +405,7 @@ with tab_docs:
         ### Template Generation
         
         **Download Template**:
-        - Click "Download CSV Template" in User Analysis tab
+        - Click "Download CSV Template" in User Analysis page
         - Opens CSV with 843 pre-labeled columns
         - Fill in patient data rows
         - Upload back to platform
@@ -504,18 +501,21 @@ with tab_docs:
         """)
     
     st.markdown("---")
-    st.info("💡 **Tip**: For hands-on learning, visit the **Demo Walkthrough** tab after reviewing documentation.")
+    st.info("💡 **Tip**: For hands-on learning, visit the **Demo Walkthrough** page after reviewing documentation.")
 
 # ============================================================================
-# USER ANALYSIS TAB (Original Code - Manual + Batch)
+# USER ANALYSIS PAGE
 # ============================================================================
-with tab_user:
+elif page == "🔬 User Analysis":
     st.header("🔬 User Analysis")
     
-    tab_manual, tab_batch = st.tabs(["✍️ Manual Patient Entry", "💾 Bulk Data Upload"])
+    analysis_mode = st.sidebar.radio(
+        "Analysis Mode:",
+        ["✍️ Manual Patient Entry", "💾 Bulk Data Upload"]
+    )
     
-    with tab_manual:
-        st.header("✍️ Manual Patient Entry")
+    if analysis_mode == "✍️ Manual Patient Entry":
+        st.subheader("✍️ Manual Patient Entry")
         st.info("Input raw laboratory values. Markers left at 0.0 will be treated as baseline.")
         
         # Manual Entry Fields
@@ -536,8 +536,8 @@ with tab_user:
             m_results = process_data(pd.DataFrame([user_inputs]))
             render_dashboard(m_results, mode="manual", key_prefix="man")
     
-    with tab_batch:
-        st.header("💾 Bulk Data Processing")
+    else:  # Bulk Data Upload
+        st.subheader("💾 Bulk Data Processing")
         
         # Template Generation & Download
         col_t1, col_t2 = st.columns([2, 1])
@@ -564,12 +564,12 @@ with tab_user:
             render_dashboard(b_results, mode="bulk", key_prefix="blk")
 
 # ============================================================================
-# DEMO WALKTHROUGH TAB
+# DEMO WALKTHROUGH PAGE
 # ============================================================================
-with tab_demo:
+elif page == "🎬 Demo Walkthrough":
     st.header("🎬 Demo Walkthrough")
     
-    demo_step = st.selectbox(
+    demo_step = st.sidebar.selectbox(
         "Select Tutorial:",
         [
             "1. Single Patient Analysis",
@@ -591,8 +591,8 @@ with tab_demo:
         ### Step-by-Step Guide
         
         #### Step 1: Navigate to User Analysis
-        - Click the **"🔬 User Analysis"** tab above
-        - Select **"✍️ Manual Patient Entry"** sub-tab
+        - Click **"🔬 User Analysis"** in the sidebar
+        - Select **"✍️ Manual Patient Entry"** mode
         
         #### Step 2: Enter Biomarker Values
         - You'll see 12 high-influence marker input fields
@@ -693,8 +693,8 @@ VEGFA_rna: 195.6
         ### Step-by-Step Guide
         
         #### Step 1: Download Template
-        - Navigate to **"🔬 User Analysis"** tab
-        - Select **"💾 Bulk Data Upload"** sub-tab
+        - Navigate to **"🔬 User Analysis"** in sidebar
+        - Select **"💾 Bulk Data Upload"** mode
         - Click **"📥 Download CSV Template"** button
         - Save the file to your computer (named `MultiNet_Patient_Template.csv`)
         
@@ -714,7 +714,7 @@ VEGFA_rna: 195.6
 ```
         
         #### Step 3: Upload Filled Template
-        - Return to **"💾 Bulk Data Upload"** sub-tab
+        - Return to **"💾 Bulk Data Upload"** mode
         - Click **"⬆️ Upload Patient Data"** file uploader
         - Select your completed CSV file
         
