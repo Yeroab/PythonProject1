@@ -41,23 +41,18 @@ def render_upload_section():
 
 # --- Section: 💾 BATCH PROCESSING ---
 def process_batch(df):
-    st.header("💾 Batch Processing Engine")
+    # 1. Alignment: Ensure the columns are in the EXACT order the coder used
+    df = df.reindex(columns=feature_names, fill_value=0)
     
-    if df.shape[1] != 843:
-        st.error(f"❌ Input Error: Expected 843 features, but detected {df.shape[1]}.")
-        return None
-
-    with st.spinner("Analyzing population cohort..."):
-        probs = model.predict_proba(df)[:, 1]
-        preds = (probs > 0.5).astype(int)
-        
-        results = df.copy()
-        results.insert(0, "Prediction", ["High Risk" if p == 1 else "Low Risk" for p in preds])
-        results.insert(1, "Risk Score", probs)
-        
-        st.success(f"Successfully processed {len(df)} patient samples.")
-        st.dataframe(results.iloc[:, :5].head(), use_container_width=True)
-        return results
+    # 2. Scaling: If the coder used Z-score normalization, you must replicate it
+    # This prevents the values from being ignored by the high base score
+    for col in df.columns:
+        if df[col].std() != 0:
+            df[col] = (df[col] - df[col].mean()) / df[col].std()
+            
+    # 3. Prediction
+    probs = model.predict_proba(df)[:, 1]
+    return probs
 
 # --- Section: 📊 INTERACTIVE DASHBOARD ---
 def render_dashboard(results):
