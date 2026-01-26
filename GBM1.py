@@ -625,6 +625,61 @@ elif page == "Documentation":
         - Debounced inputs
         - Optimized asset delivery
         """)
+    
+    # Backend Architecture Tab
+    with doc_tabs[2]:
+        st.markdown("""
+        ### Core Processing Pipeline
+        
+        #### 1. Model Loading (`load_assets`)
+        
+        **Function Purpose**
+        Loads the trained XGBoost model from a serialized pickle file and prepares feature metadata for downstream processing.
+        
+        **Implementation Details**
+```python
+        @st.cache_resource
+        def load_assets():
+            with open('gbm_clinical_model.pkl', 'rb') as f:
+                bundle = pickle.load(f)
+            model = bundle["model"]
+            feature_names = model.get_booster().feature_names
+            importances = model.feature_importances_
+            importance_df = pd.DataFrame({
+                'Biomarker': feature_names,
+                'Influence Score': importances
+            }).sort_values(by='Influence Score', ascending=False)
+            return model, feature_names, importance_df
+```
+        
+        **Caching Strategy**
+        - `@st.cache_resource` ensures single load per session
+        - Decorator persists across reruns
+        - Reduces startup latency
+        - Shared across all users in production
+        
+        **Outputs**
+        - `model`: XGBoost classifier object with trained parameters
+        - `feature_names`: List of 843 expected biomarker identifiers in exact order
+        - `importance_df`: Precomputed feature importances sorted descending by influence score
+        
+        **Error Handling**
+        
+        *FileNotFoundError*
+        - Displays user-friendly error message
+        - Suggests file placement in root directory
+        - Stops execution to prevent downstream errors
+        
+        *Generic Exceptions*
+        - Catches serialization issues (pickle version mismatches)
+        - Handles corrupted file errors
+        - Logs exception details for debugging
+        - Graceful degradation with informative messaging
+        
+        *Execution Control*
+        - `st.stop()` prevents partial initialization
+        - Ensures consistent application state
+        - Avoids cascading errors
         
         #### 2. Data Preprocessing (`process_data`)
         
