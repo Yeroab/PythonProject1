@@ -458,7 +458,7 @@ elif app_mode == "🩺 Input your own omics data":
 elif app_mode == "🧪 Interactive Demo Walkthrough":
     st.title("Interactive Demo Walkthrough")
     
-    if diag and biomarkers:
+    if diag:
         st.markdown("""
         ### Demo: Sample GBM Classification
         
@@ -467,10 +467,20 @@ elif app_mode == "🧪 Interactive Demo Walkthrough":
         
         model = diag['model']
         all_features = diag['features']
-        top_10_df = biomarkers['top_targets_df']
+        
+        # Get top 10 from model feature importances
+        feat_df = pd.DataFrame({
+            'feature': all_features, 
+            'importance': model.feature_importances_
+        }).sort_values(by='importance', ascending=False)
+        
+        top_10_features = feat_df.head(10).reset_index(drop=True)
         
         st.write("### Top 10 Biomarkers")
-        st.dataframe(top_10_df, use_container_width=True)
+        st.dataframe(
+            top_10_features.style.format({'importance': '{:.4f}'}),
+            use_container_width=True
+        )
         
         # Example GBM sample (high-risk values)
         example_inputs = {
