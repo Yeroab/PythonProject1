@@ -329,13 +329,11 @@ if page == "Home":
 elif page == "Documentation":
     st.header("System Documentation")
     
-    # Create tabs for documentation sections
+    # Create tabs for documentation sections (Backend removed, Frontend merged with Model)
     doc_tabs = st.tabs([
         "Overview",
-        "Frontend Architecture",
-        "Backend Architecture",
-        "Data Requirements",
-        "Model Information"
+        "System Architecture & Model",
+        "Data Requirements"
     ])
     
     # Overview Tab
@@ -351,1148 +349,374 @@ elif page == "Documentation":
         
         The platform follows a streamlined analysis pipeline:
         
-        1. **Data Input**: Raw laboratory values for 843 biomarkers (proteomics, transcriptomics, metabolomics)
-        2. **Preprocessing**: Automatic alignment with model feature space, zero-filling for missing markers
-        3. **Inference**: XGBoost model generates risk probability scores
-        4. **Visualization**: Interactive dashboards display predictions, biomarker influences, and patient profiles
-        5. **Export**: Results available for clinical record integration
+        1. Data Input: Raw laboratory values for 843 biomarkers (proteomics, transcriptomics, metabolomics)
+        2. Preprocessing: Automatic alignment with model feature space, zero-filling for missing markers
+        3. Inference: XGBoost model generates risk probability scores
+        4. Visualization: Interactive dashboards display predictions, biomarker influences, and patient profiles
+        5. Export: Results available for clinical record integration
         
         ### Clinical Use Cases
         
         **Treatment Planning**
-        - Identify patients requiring aggressive intervention
-        - Guide therapy selection based on molecular risk profiles
-        - Support multidisciplinary tumor board discussions
-        - Prioritize resource allocation for high-risk cases
+        1. Identify patients requiring aggressive intervention
+        2. Guide therapy selection based on molecular risk profiles
+        3. Support multidisciplinary tumor board discussions
+        4. Prioritize resource allocation for high-risk cases
         
         **Prognosis Assessment**
-        - Stratify patients by molecular risk profiles
-        - Estimate likelihood of poor outcomes
-        - Inform patient and family counseling
-        - Support clinical trial enrollment decisions
+        1. Stratify patients by molecular risk profiles
+        2. Estimate likelihood of poor outcomes
+        3. Inform patient and family counseling
+        4. Support clinical trial enrollment decisions
         
         **Research Studies**
-        - Batch analysis of patient cohorts
-        - Retrospective outcome correlation
-        - Biomarker validation studies
-        - Clinical trial stratification
+        1. Batch analysis of patient cohorts
+        2. Retrospective outcome correlation
+        3. Biomarker validation studies
+        4. Clinical trial stratification
         
         **Biomarker Discovery**
-        - Explore feature importance across the global model
-        - Identify patient-specific therapeutic targets
-        - Validate known prognostic markers
-        - Discover novel risk indicators
+        1. Explore feature importance across the global model
+        2. Identify patient-specific therapeutic targets
+        3. Validate known prognostic markers
+        4. Discover novel risk indicators
         
         ### System Requirements
         
         **Hardware Requirements**
-        - Modern web browser (Chrome, Firefox, Safari, Edge)
-        - Minimum 4GB RAM recommended
-        - Stable internet connection
-        - Display resolution: 1280x720 or higher
+        1. Modern web browser (Chrome, Firefox, Safari, Edge)
+        2. Minimum 4GB RAM recommended
+        3. Stable internet connection
+        4. Display resolution: 1280x720 or higher
         
         **Software Dependencies**
-        - Python 3.8 or higher
-        - Streamlit framework
-        - XGBoost machine learning library
-        - Plotly visualization library
-        - Pandas data processing library
+        1. Python 3.8 or higher
+        2. Streamlit framework
+        3. XGBoost machine learning library
+        4. Plotly visualization library
+        5. Pandas data processing library
         
         **Data Requirements**
-        - CSV format for bulk uploads
-        - Numeric biomarker values
-        - Standardized column headers
-        - UTF-8 encoding
+        1. CSV format for bulk uploads
+        2. Numeric biomarker values
+        3. Standardized column headers
+        4. UTF-8 encoding
         """)
     
-    # Frontend Architecture Tab
+    # System Architecture & Model Tab (Frontend + Model merged)
     with doc_tabs[1]:
         st.markdown("""
-        ### Technology Stack
+        ### Frontend Technology Stack
         
         **Framework**: Streamlit 1.28+
-        - Rapid prototyping and deployment
-        - Built-in widget management
-        - Session state handling
-        - Automatic reactivity
+        1. Rapid prototyping and deployment
+        2. Built-in widget management
+        3. Session state handling
+        4. Automatic reactivity
         
         **Visualization**: Plotly 5.17+
-        - Interactive charts and graphs
-        - Hover tooltips and zooming
-        - Export capabilities
-        - Responsive design
+        1. Interactive charts and graphs
+        2. Hover tooltips and zooming
+        3. Export capabilities
+        4. Responsive design
         
         **Data Handling**: Pandas 2.0+, NumPy 1.24+
-        - Efficient data manipulation
-        - Missing value handling
-        - Type conversion utilities
-        - Statistical operations
+        1. Efficient data manipulation
+        2. Missing value handling
+        3. Type conversion utilities
+        4. Statistical operations
         
         **Styling**: Custom CSS
-        - Responsive layout design
-        - Theme customization
-        - Component styling
-        - Brand consistency
+        1. Responsive layout design
+        2. Theme customization (navy sidebar, light blue header/buttons)
+        3. Component styling
+        4. Brand consistency
         
-        ### Component Structure
+        ### Component Architecture
         
-        #### 1. Navigation System
+        #### Navigation System
+        1. Four primary sections via sidebar radio buttons
+        2. Tab-based sub-navigation within sections
+        3. Session state persistence
+        4. Responsive layout with mobile support
         
-        **Sidebar Navigation**
-        - Four primary sections accessible via radio buttons
-        - Persistent across sessions
-        - Visual highlighting of active page
-        - Compact design for space efficiency
-        
-        **Tab-based Sub-navigation**
-        - Organized content within each section
-        - Horizontal tab layout
-        - Clear section separation
-        - Intuitive workflow progression
-        
-        **State Management**
-        - Unique keys prevent widget conflicts
-        - Session state persistence
-        - Cross-page data sharing
-        - Reset functionality
-        
-        **Responsive Layout**
-        - Columns adapt to screen size
-        - Mobile-friendly design
-        - Automatic reflow
-        - Consistent spacing
-        
-        #### 2. Input Modules
+        #### Input Modules
         
         **Manual Entry Interface**
-        
-        *High-Priority Markers Section*
-        - Top 12 high-influence biomarkers displayed by default
-        - Three-column grid layout for efficient scanning
-        - Number input widgets with validation
-        - Default zero-fill for baseline simulation
-        - Clear labeling with biomarker names
-        
-        *Advanced Marker Section*
-        - Collapsible expander for remaining 831 markers
-        - Four-column grid for compact presentation
-        - Consistent input widget styling
-        - Alphabetical or importance-based ordering
-        - Bulk entry support
-        
-        *Input Validation*
-        - Real-time type checking
-        - Range validation (non-negative values)
-        - Required field indicators
-        - Error messaging
-        - Auto-correction suggestions
+        1. Top 12 high-influence biomarkers displayed by default
+        2. Three-column grid layout for efficient scanning
+        3. Advanced marker section with 831 remaining markers
+        4. Real-time validation and error messaging
         
         **Bulk Upload Interface**
+        1. One-click CSV template download
+        2. Drag-and-drop file upload support
+        3. Automatic column alignment and validation
+        4. Progress indication during processing
         
-        *Template Generation*
-        - One-click CSV template download
-        - Pre-populated column headers
-        - Example data rows (optional)
-        - Format specifications included
-        - Version tracking
-        
-        *File Upload Component*
-        - Drag-and-drop support
-        - File type validation (.csv only)
-        - Size limit checking
-        - Progress indication
-        - Error recovery
-        
-        *Data Validation*
-        - Automatic column alignment
-        - Missing value detection
-        - Type conversion with error handling
-        - Duplicate row identification
-        - Data quality metrics
-        
-        #### 3. Visualization Components
+        #### Visualization Components
         
         **Risk Assessment Visuals**
+        1. Gauge chart for single patient analysis
+        2. Histogram for cohort distribution
+        3. Color-coded risk zones (red for high, green for low)
+        4. Interactive tooltips and export functionality
         
-        *Gauge Chart (Single Patient)*
-        - Semi-circular gauge displaying risk percentage
-        - Color-coded zones (green for low, red for high)
-        - Numeric risk score display
-        - Prediction label (High/Low Risk)
-        - Threshold indicator at 50%
-        
-        *Histogram (Cohort Analysis)*
-        - Probability density distribution across patients
-        - Color-coded by risk category
-        - Bin size optimization
-        - Overlay statistics
-        - Exportable as PNG/SVG
-        
-        **Biomarker Analysis Visualizations**
-        
-        *Global Influence Bar Chart*
-        - Top 15 features by model importance
-        - Horizontal orientation for readability
-        - Color gradient indicating magnitude
-        - Sorted by importance score
-        - Interactive tooltips
-        
-        *Patient-Specific Charts*
-        - Top 20 marker levels for selected individual
-        - Side-by-side comparison (patient vs global)
-        - Color-coded by expression level
-        - Sortable and filterable
-        - Drill-down capabilities
-        
-        *Multi-Modal Radar Chart*
-        - Three-axis display (Protein, RNA, Metabolite)
-        - Filled area indicating expression levels
-        - Average expression across omics layers
-        - Comparison overlay option
-        - Export functionality
-        
-        *Comparative Views*
-        - Patient values vs global importance
-        - Dual bar chart layout
-        - Aligned y-axes for comparison
-        - Highlighting of overlapping markers
-        - Statistical significance indicators
-        
-        #### 4. Interactivity Features
-        
-        **Patient Selection**
-        - Dropdown to explore individual records
-        - Index or ID-based selection
-        - Preview on hover
-        - Quick navigation buttons
-        - Comparison mode
-        
-        **Expandable Sections**
-        - Collapsible panels for advanced options
-        - Full data table views
-        - Progressive disclosure pattern
-        - Smooth animations
-        - Persistent state across sessions
-        
-        **Download Functionality**
-        - CSV template generation
-        - Results export (PDF, CSV)
-        - Chart image downloads (PNG, SVG)
-        - Batch export options
-        - Customizable formats
-        
-        **Color Coding System**
-        - Risk-aware palettes (red for high risk, green for low)
-        - Consistent across all visualizations
-        - Colorblind-friendly options
-        - Customizable themes
-        - Legend and key provided
-        
-        ### User Experience Design
-        
-        **Progressive Disclosure**
-        - Essential features visible by default
-        - Advanced options hidden until needed
-        - Logical information hierarchy
-        - Reduced cognitive load
-        - Guided workflow
-        
-        **Visual Hierarchy**
-        - Clear headers and section dividers
-        - Consistent spacing and alignment
-        - Typography scale for importance
-        - White space utilization
-        - Attention flow guidance
-        
-        **Feedback Mechanisms**
-        - Loading spinners during processing
-        - Success/error message toasts
-        - Progress bars for batch operations
-        - Validation feedback
-        - Confirmation dialogs
-        
-        **Accessibility**
-        - High-contrast color schemes
-        - Large, readable fonts (minimum 14px)
-        - Clear, descriptive labels
-        - Keyboard navigation support
-        - Screen reader compatibility
-        
-        **Performance Optimization**
-        - Lazy loading of charts
-        - Data caching strategies
-        - Efficient re-rendering
-        - Debounced inputs
-        - Optimized asset delivery
-        """)
-    
-    # Backend Architecture Tab
-    with doc_tabs[2]:
-        st.markdown("""
-        ### Core Processing Pipeline
-        
-        #### 1. Model Loading (`load_assets`)
-        
-        **Function Purpose**
-        Loads the trained XGBoost model from a serialized pickle file and prepares feature metadata for downstream processing.
-        
-        **Implementation Details**
-```python
-        @st.cache_resource
-        def load_assets():
-            with open('gbm_clinical_model.pkl', 'rb') as f:
-                bundle = pickle.load(f)
-            model = bundle["model"]
-            feature_names = model.get_booster().feature_names
-            importances = model.feature_importances_
-            importance_df = pd.DataFrame({
-                'Biomarker': feature_names,
-                'Influence Score': importances
-            }).sort_values(by='Influence Score', ascending=False)
-            return model, feature_names, importance_df
-```
-        
-        **Caching Strategy**
-        - `@st.cache_resource` ensures single load per session
-        - Decorator persists across reruns
-        - Reduces startup latency
-        - Shared across all users in production
-        
-        **Outputs**
-        - `model`: XGBoost classifier object with trained parameters
-        - `feature_names`: List of 843 expected biomarker identifiers in exact order
-        - `importance_df`: Precomputed feature importances sorted descending by influence score
-        
-        **Error Handling**
-        
-        *FileNotFoundError*
-        - Displays user-friendly error message
-        - Suggests file placement in root directory
-        - Stops execution to prevent downstream errors
-        
-        *Generic Exceptions*
-        - Catches serialization issues (pickle version mismatches)
-        - Handles corrupted file errors
-        - Logs exception details for debugging
-        - Graceful degradation with informative messaging
-        
-        *Execution Control*
-        - `st.stop()` prevents partial initialization
-        - Ensures consistent application state
-        - Avoids cascading errors
-        
-        #### 2. Data Preprocessing (`process_data`)
-        
-        **Function Purpose**
-        Aligns user-provided biomarker data with model expectations, handles missing values, and performs inference.
-        
-        **Input Specification**
-        - Pandas DataFrame with variable columns
-        - Numeric values (float or int)
-        - Optional patient identifiers
-        - May contain extra or missing columns
-        
-        **Processing Steps**
-        
-        *Step 1: Column Alignment*
-```python
-        df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
-```
-        - Reorders columns to match model's feature order
-        - Ensures exact match with 843 expected features
-        - Fills missing columns with 0.0 (baseline expression)
-        - Drops any extra columns not in training set
-        - Maintains row integrity (patient records)
-        
-        *Step 2: Type Conversion*
-```python
-        df_aligned.astype(float)
-```
-        - Enforces numeric data types across all columns
-        - Converts string representations to floats
-        - Handles scientific notation
-        - Raises errors for non-numeric values
-        - Preserves NaN for explicit missing data
-        
-        *Step 3: Model Inference*
-```python
-        probs = model.predict_proba(df_aligned)[:, 1]
-        preds = (probs > 0.5).astype(int)
-```
-        - `predict_proba()` returns probability array [P(low risk), P(high risk)]
-        - Extracts high-risk probability (second column)
-        - Binary classification via 0.5 threshold
-        - Vectorized operation for batch efficiency
-        
-        **Output DataFrame Structure**
-        
-        | Column | Type | Description |
-        |--------|------|-------------|
-        | Prediction | string | "High Risk" or "Low Risk" label |
-        | Risk Score | float | Probability value (0.0 - 1.0) |
-        | [843 biomarkers] | float | Aligned biomarker values |
-        
-        **Error Handling**
-        - Type conversion errors caught and reported
-        - Model prediction failures logged
-        - Data shape mismatches identified
-        - Memory overflow protection for large batches
-        
-        #### 3. Visualization Rendering
-        
-        **Risk Charts (`render_risk_charts`)**
-        
-        *Mode-Aware Rendering*
-        - "manual" mode: Single gauge chart
-        - "bulk" mode: Cohort histogram
-        - Dynamic component selection
-        - Consistent styling across modes
-        
-        *Color Assignment Logic*
-```python
-        color = "#EF553B" if pred == "High Risk" else "#00CC96"
-```
-        - Red (#EF553B) for high-risk patients
-        - Green (#00CC96) for low-risk patients
-        - Consistent with risk communication standards
-        - Accessible color contrast ratios
-        
-        *Plotly Figure Generation*
-        - Go.Figure for gauge (custom control)
-        - px.histogram for distribution (convenience)
-        - Unique keys prevent duplicate IDs
-        - Responsive sizing via use_container_width
-        
-        **Dashboard Assembly (`render_dashboard`)**
-        
-        *Modular Architecture*
-        - Three independent visualization blocks
-        - Sequential rendering: predictions → influence → deep-dive
-        - Each block self-contained
-        - Parallel data fetching where possible
-        
-        *State Management*
-        - Key prefixes prevent widget collisions
-        - Patient selection persisted in session state
-        - Chart interactions isolated per context
-        - Reset functionality clears all state
-        
-        *Performance Optimization*
-        - Lazy evaluation of expensive charts
-        - Conditional rendering based on data availability
-        - Memoization of repeated calculations
-        - Efficient DataFrame operations
+        **Biomarker Analysis**
+        1. Top 15 global influence bar chart
+        2. Patient-specific top 20 marker levels
+        3. Multi-modal radar chart (Protein, RNA, Metabolite)
+        4. Comparative views (patient vs global importance)
         
         ### Machine Learning Model
         
         #### Algorithm: XGBoost (Extreme Gradient Boosting)
         
-        **Why XGBoost?**
-        
-        *High-Dimensional Data Handling*
-        - Efficiently processes 843 features
-        - Built-in feature selection
-        - Handles sparse data well
-        - Regularization prevents overfitting
-        
-        *Non-Linear Relationship Capture*
-        - Tree-based structure captures interactions
-        - No assumptions about feature distributions
-        - Automatic interaction detection
-        - Robust to outliers
-        
-        *Feature Importance Scoring*
-        - Built-in SHAP-like importance calculation
-        - Gain-based attribution
-        - Consistent and interpretable
-        - Supports clinical validation
-        
-        *Regularization Mechanisms*
-        - L1 (Lasso) and L2 (Ridge) penalties
-        - Tree pruning based on gamma parameter
-        - Max depth constraints
-        - Min child weight thresholds
+        **Model Advantages**
+        1. Efficiently processes 843 high-dimensional features
+        2. Tree-based structure captures complex non-linear interactions
+        3. Built-in gain-based feature importance calculation
+        4. L1/L2 regularization prevents overfitting
         
         #### Model Specifications
         
         **Task Definition**
-        - Supervised binary classification
-        - Output: High risk (1) vs Low risk (0)
-        - Evaluation: Probability scores
+        1. Supervised binary classification
+        2. Output: High risk (1) vs Low risk (0)
+        3. Probability scores for risk assessment
+        4. 0.5 threshold for binary classification
         
         **Input Features**
-        - 843 multi-omics biomarkers
-        - Continuous numeric values
-        - No categorical encoding needed
-        - Raw values (no normalization)
-        
-        **Output Format**
-        - Probability scores via logistic objective
-        - Range: 0.0 to 1.0
-        - Calibrated via Platt scaling
-        - Confidence intervals available
+        1. 843 multi-omics biomarkers
+        2. Continuous numeric values (raw, non-normalized)
+        3. Proteomics (_prot), Transcriptomics (_rna), Metabolomics (_met)
+        4. Zero-filling for missing markers
         
         **Training Protocol**
-        - Supervised learning on labeled patient outcomes
-        - Cross-validation for hyperparameter tuning
-        - Early stopping to prevent overfitting
-        - Stratified sampling for class balance
+        1. Supervised learning on labeled patient outcomes
+        2. 5-fold stratified cross-validation
+        3. Early stopping (50 rounds patience)
+        4. AUC-ROC as primary evaluation metric
+        5. Balanced accuracy and F1-score as secondary metrics
         
-        #### Feature Importance Calculation
+        #### Feature Importance Analysis
         
-        **Method: Gain-Based Importance**
-```python
-        importances = model.feature_importances_
-```
-        - Measures average gain across all splits using the feature
-        - Normalized to sum to 1.0
-        - Higher values indicate stronger predictive power
-        - Independent of feature scale
+        **Gain-Based Importance Calculation**
+        1. Measures average gain across all tree splits
+        2. Normalized to sum to 1.0
+        3. Aggregated across entire ensemble
+        4. Independent of feature scale
         
         **Interpretation Guidelines**
-        - Relative contribution to risk probability
-        - Not causal relationships
-        - Population-level patterns
-        - May vary across subgroups
+        1. Higher values indicate stronger predictive power
+        2. Relative contribution, not causal relationships
+        3. Population-level patterns
+        4. May vary across patient subgroups
         
-        **Global Scope**
-        - Aggregated across all trees in ensemble
-        - Averaged over all patients in training set
-        - Stable estimates with large sample sizes
-        - Consistent ranking across runs
+        **Clinical Application**
+        1. Laboratory focus: Prioritize high-importance biomarkers
+        2. Cost-effectiveness: Measure critical markers first
+        3. Research: Validate known and discover novel markers
+        4. Therapy: Target pathways with important markers
         
-        **Clinical Use Case**
-        - Identifies key biomarkers for laboratory focus
-        - Guides targeted therapy selection
-        - Validates known prognostic factors
-        - Discovers novel risk indicators
+        ### Model Outputs
         
-        ### Data Flow Diagram
-```
-        ┌─────────────────────────┐
-        │  User Input             │
-        │  (CSV / Manual Entry)   │
-        └───────────┬─────────────┘
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  process_data()         │
-        │  - Column Alignment     │
-        │  - Zero-Filling         │
-        │  - Type Conversion      │
-        └───────────┬─────────────┘
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  XGBoost Model          │
-        │  predict_proba()        │
-        └───────────┬─────────────┘
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  Risk Scores +          │
-        │  Predictions            │
-        └───────────┬─────────────┘
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  Visualization Layer    │
-        │  (Plotly Charts)        │
-        └───────────┬─────────────┘
-                    │
-                    ▼
-        ┌─────────────────────────┐
-        │  Interactive Dashboard  │
-        │  Display                │
-        └─────────────────────────┘
-```
+        #### Risk Score Interpretation
         
-        ### Performance Considerations
+        **Score Ranges**
+        1. 0.0-0.3: Very low risk, minimal intervention
+        2. 0.3-0.5: Low risk, surveillance acceptable
+        3. 0.5-0.7: Moderate-high risk, standard treatment
+        4. 0.7-1.0: Very high risk, aggressive treatment
         
-        **Caching Strategies**
-        - Model loaded once per session via `@st.cache_resource`
-        - Feature importance precomputed and cached
-        - Chart objects reused when data unchanged
-        - Session state for user inputs
+        **Prediction Labels**
+        1. High Risk: Score ≥ 0.5, poor outcomes expected
+        2. Low Risk: Score < 0.5, favorable prognosis
+        3. Decision boundary: 50% probability threshold
+        4. Adjustable based on clinical context and resources
         
-        **Lazy Loading**
-        - Charts rendered only when tabs accessed
-        - Conditional data fetching
-        - Deferred computation of expensive operations
-        - Progressive rendering for large datasets
+        ### Training Dataset
         
-        **Memory Management**
-        - Full 843-column DataFrames in session state
-        - Cleanup of old visualizations
-        - Efficient DataFrame operations (vectorized)
-        - Garbage collection between sessions
+        #### Source Information
+        1. Disease: Glioblastoma Multiforme (GBM)
+        2. Multi-center clinical repository (2015-2023)
+        3. North American and European centers
+        4. Age range: 18-85 years
+        5. Treatment-naive and treated patients included
         
-        **Processing Time**
-        - Single patient: < 1 second
-        - 100 patients: ~1-5 seconds
-        - 1000 patients: ~10-30 seconds
-        - Batch inference parallelizable
+        #### Data Preprocessing
+        1. Raw values used directly (no scaling/normalization)
+        2. All 843 biomarkers retained for comprehensive coverage
+        3. Zero-imputation for missing measurements
+        4. Class balance via XGBoost's scale_pos_weight parameter
+        5. MCAR (Missing Completely at Random) assumption validated
         
-        **Scalability Considerations**
-        - Stateless design supports horizontal scaling
-        - Model loading optimized for cold starts
-        - Database integration possible for large cohorts
-        - API endpoint deployment feasible
+        ### Model Limitations
+        
+        #### Scope Limitations
+        1. Trained only on glioblastoma patients
+        2. Not applicable to other brain tumors
+        3. Not validated for recurrent disease
+        4. Limited to adult patients (≥18 years)
+        5. Performance may vary across demographics
+        
+        #### Clinical Considerations
+        1. Provides risk stratification, not diagnosis
+        2. Requires histopathological confirmation
+        3. Should complement, not replace, clinical judgment
+        4. Consider patient comorbidities and imaging findings
+        5. Requires external validation in prospective studies
+        
+        #### Technical Constraints
+        1. Zero-filling may not capture true baseline for all markers
+        2. Assumes consistent measurement protocols across labs
+        3. Model may need retraining as treatment standards evolve
+        4. Batch processing preferred for large cohorts (>100 patients)
+        
+        ### Recommendations
+        
+        1. Present results at multidisciplinary tumor board discussions
+        2. Adjust risk cutoffs based on institutional resources
+        3. Track model performance on real-world patients
+        4. Periodically retrain with new data to maintain accuracy
+        5. Validate lab measurement protocols regularly
+        6. Document model use in treatment rationale
+        7. Integrate with neurosurgical and radiation oncology plans
+        8. Consider molecular profile alongside clinical factors
         """)
     
     # Data Requirements Tab
-    with doc_tabs[3]:
+    with doc_tabs[2]:
         st.markdown("""
         ### Input Data Specifications
         
         #### Biomarker Identifiers
         
-        The model expects exactly **843 biomarkers** with specific naming conventions following a standardized taxonomy.
+        The model expects exactly **843 biomarkers** with specific naming conventions.
         
-        **Naming Convention**
-        
-        Each biomarker follows the pattern: `[IDENTIFIER]_[TYPE]`
+        **Naming Convention**: `[IDENTIFIER]_[TYPE]`
         
         **Biomarker Types**
         
         **Proteomics (_prot)**
-        - Suffix: `_prot`
-        - Examples: `TP53_prot`, `EGFR_prot`, `PTEN_prot`
-        - Measurement: Protein concentration or expression level
-        - Units: Typically ng/mL or relative fluorescence units
-        - Technology: Mass spectrometry, immunoassay, Western blot
+        1. Suffix: `_prot`
+        2. Examples: `TP53_prot`, `EGFR_prot`, `PTEN_prot`
+        3. Measurement: Protein concentration or expression level
+        4. Units: Typically ng/mL or relative fluorescence units
+        5. Technology: Mass spectrometry, immunoassay, Western blot
         
         **Transcriptomics (_rna)**
-        - Suffix: `_rna`
-        - Examples: `IDH1_rna`, `MGMT_rna`, `TERT_rna`
-        - Measurement: mRNA expression level
-        - Units: FPKM, TPM, or raw read counts
-        - Technology: RNA-seq, microarray, qRT-PCR
+        1. Suffix: `_rna`
+        2. Examples: `IDH1_rna`, `MGMT_rna`, `TERT_rna`
+        3. Measurement: mRNA expression level
+        4. Units: FPKM, TPM, or raw read counts
+        5. Technology: RNA-seq, microarray, qRT-PCR
         
         **Metabolomics (_met)**
-        - Suffix: `_met`
-        - Examples: `Glucose_met`, `Lactate_met`, `ATP_met`
-        - Measurement: Metabolite concentration
-        - Units: μM, mM, or relative abundance
-        - Technology: Mass spectrometry, NMR spectroscopy
+        1. Suffix: `_met`
+        2. Examples: `Glucose_met`, `Lactate_met`, `ATP_met`
+        3. Measurement: Metabolite concentration
+        4. Units: μM, mM, or relative abundance
+        5. Technology: Mass spectrometry, NMR spectroscopy
         
         #### Value Ranges
         
         **Data Type Requirements**
-        - Format: Continuous numeric (float or integer)
-        - Precision: Up to 2 decimal places recommended
-        - Range: Non-negative values (0 to ∞)
-        - Special values: 0.0 represents baseline/undetected
+        1. Format: Continuous numeric (float or integer)
+        2. Precision: Up to 2 decimal places recommended
+        3. Range: Non-negative values (0 to ∞)
+        4. Special values: 0.0 represents baseline/undetected
         
         **Units Specification**
-        - Raw laboratory values (model trained on non-normalized data)
-        - Consistent units within each biomarker type
-        - No log-transformation required
-        - No z-score normalization needed
+        1. Raw laboratory values (model trained on non-normalized data)
+        2. Consistent units within each biomarker type
+        3. No log-transformation required
+        4. No z-score normalization needed
         
         **Missing Data Handling**
-        - Enter `0.0` to represent baseline/undetected levels
-        - Leave cells empty in CSV (will be filled with 0.0)
-        - Do not use NULL, NA, or text indicators
-        - Missing markers reduce accuracy but don't break model
-        
-        **Value Validation**
-        - Negative values not expected (will be flagged)
-        - Extremely large values (>10000) reviewed for errors
-        - Outliers beyond 3 standard deviations highlighted
-        - Duplicate entries detected and reported
+        1. Enter `0.0` to represent baseline/undetected levels
+        2. Leave cells empty in CSV (will be filled with 0.0)
+        3. Do not use NULL, NA, or text indicators
+        4. Missing markers reduce accuracy but don't break model
         
         #### CSV File Format (Bulk Upload)
         
-        **File Structure**
-        
-        **Header Row (Required)**
-        - Must contain exact biomarker names matching model features
-        - No spaces or special characters except underscore
-        - Case-sensitive matching
-        - Order does not matter (automatically reordered)
+        **Header Row Requirements**
+        1. Must contain exact biomarker names matching model features
+        2. No spaces or special characters except underscore
+        3. Case-sensitive matching
+        4. Order does not matter (automatically reordered)
         
         **Data Rows**
-        - One patient per row
-        - No blank rows between records
-        - Patient ID optional (can be first column)
-        - Maximum recommended: 1000 patients per file
+        1. One patient per row
+        2. No blank rows between records
+        3. Patient ID optional (can be first column)
+        4. Maximum recommended: 1000 patients per file
         
         **Technical Specifications**
-        - Delimiter: Comma (,)
-        - Quote character: Double quotes (") for text fields
-        - Encoding: UTF-8
-        - Line endings: Unix (LF) or Windows (CRLF)
-        - Maximum file size: 50 MB
-        
-        **Example Format**
-```
-        PatientID,TP53_prot,EGFR_prot,IDH1_rna,MGMT_rna,Glucose_met,...
-        P001,12.5,8.3,150.2,22.1,85.0,...
-        P002,9.1,11.7,98.5,19.3,72.4,...
-        P003,15.3,7.9,142.1,25.8,91.2,...
-```
+        1. Delimiter: Comma (,)
+        2. Quote character: Double quotes (") for text fields
+        3. Encoding: UTF-8
+        4. Line endings: Unix (LF) or Windows (CRLF)
+        5. Maximum file size: 50 MB
         
         **Column Handling Rules**
-        
-        **Extra Columns**
-        - Automatically dropped during processing
-        - Patient IDs preserved if labeled correctly
-        - Clinical metadata ignored but retained
-        - No error raised for additional columns
-        
-        **Missing Columns**
-        - Filled with 0.0 during alignment
-        - Warning displayed for extensive missingness
-        - Partial data still processable
-        - Accuracy may be reduced
-        
-        **Column Order**
-        - Does not matter for processing
-        - Automatic reordering by `reindex()`
-        - Internal sorting by feature importance
-        - User view maintains original order
+        1. Extra columns automatically dropped during processing
+        2. Missing columns filled with 0.0 during alignment
+        3. Column order does not matter
+        4. Patient IDs preserved if labeled correctly
         
         #### Manual Entry Guidelines
         
-        **1. Prioritize High-Influence Markers**
-        - Top 12 fields shown by default
-        - Account for 60-70% of model decision
-        - Essential for accurate predictions
-        - Always obtain these measurements first
-        
-        **2. Use Zero for Unknowns**
-        - Leave fields at 0.0 if data unavailable
-        - Better than omitting measurements entirely
-        - Model trained to handle zeros as baseline
-        - Document which markers are truly missing
-        
-        **3. Check Units**
-        - Ensure values match training data scale
-        - Protein: typically 0-100 ng/mL
-        - RNA: typically 0-1000 FPKM
-        - Metabolite: typically 0-500 μM
-        - Consult lab for reference ranges
-        
-        **4. Avoid Text**
-        - Only numeric inputs accepted
-        - No units in value fields
-        - No qualitative descriptors
-        - Use separate notes field for comments
-        
-        **5. Quality Control**
-        - Review values before submission
-        - Check for decimal point errors
-        - Verify patient identification
-        - Confirm measurement dates
+        1. Prioritize top 12 high-influence markers shown by default
+        2. Use zero for unknowns (leave fields at 0.0 if data unavailable)
+        3. Check units (ensure values match training data scale)
+        4. Avoid text (only numeric inputs accepted)
+        5. Quality control (review values before submission)
         
         ### Template Generation
         
-        **Download Template**
-        - Navigate to User Analysis → Bulk Data Upload
-        - Click "Download CSV Template" button
-        - Saves file as `MultiNet_Patient_Template.csv`
-        - Opens in default spreadsheet application
-        
-        **Template Structure**
-        - Pre-populated column headers (843 biomarkers)
-        - Empty data rows ready for input
-        - Optional example row with sample values
-        - Instructions in comment row (deletable)
+        **Download Process**
+        1. Navigate to User Analysis → Bulk Data Upload
+        2. Click "Download CSV Template" button
+        3. Saves file as `MultiNet_Patient_Template.csv`
+        4. Opens in default spreadsheet application
         
         **Filling the Template**
-        
-        **Step 1: Open in Spreadsheet Software**
-        - Microsoft Excel, Google Sheets, LibreOffice Calc
-        - Enable data validation for numeric columns
-        - Set number format to 2 decimal places
-        - Freeze header row for easier scrolling
-        
-        **Step 2: Enter Patient Data**
-        - One patient per row starting from row 2
-        - Fill columns left to right
-        - Use tab or arrow keys for navigation
-        - Copy-paste from lab systems when possible
-        
-        **Step 3: Validate Entries**
-        - Check for text in numeric fields
-        - Verify no blank rows inserted
-        - Confirm header row unchanged
-        - Review outliers and extreme values
-        
-        **Step 4: Save and Upload**
-        - Save as CSV format (not Excel .xlsx)
-        - Keep original file as backup
-        - Upload via User Analysis interface
-        - Review processing messages for errors
+        1. Open in spreadsheet software (Excel, Google Sheets, LibreOffice)
+        2. Enable data validation for numeric columns
+        3. One patient per row starting from row 2
+        4. Fill columns left to right
+        5. Save as CSV format (not Excel .xlsx)
+        6. Upload via User Analysis interface
         
         ### Data Privacy & Security
         
         **No Persistent Storage**
-        - Patient data not saved on server
-        - Temporary session storage only
-        - Automatic cleanup after session ends
-        - No database retention
+        1. Patient data not saved on server
+        2. Temporary session storage only
+        3. Automatic cleanup after session ends
+        4. No database retention
         
         **Session-Based Processing**
-        - Data cleared when browser tab closed
-        - No cross-user data sharing
-        - Isolated analysis environments
-        - Secure HTTPS transmission
-        
-        **Local Processing**
-        - All inference happens within Streamlit session
-        - No external API calls with patient data
-        - Model hosted on same server
-        - No third-party data sharing
+        1. Data cleared when browser tab closed
+        2. No cross-user data sharing
+        3. Isolated analysis environments
+        4. Secure HTTPS transmission
         
         **HIPAA Considerations**
-        - Suitable for de-identified research data
-        - No PHI storage or transmission
-        - Audit logging available
-        - Compliant with de-identification standards
-        - Business Associate Agreement available
-        
-        **Best Practices for Privacy**
-        - Remove patient names from CSV files
-        - Use study IDs instead of medical record numbers
-        - Strip dates to month/year only
-        - Exclude geographic identifiers below state level
-        - Review data before upload
-        
-        **Data Retention Policy**
-        - Session data: Cleared on browser close
-        - Server logs: Retained 30 days
-        - Error logs: No patient data included
-        - Backup files: User responsibility only
-        """)
-    
-    # Model Information Tab
-    with doc_tabs[4]:
-        st.markdown("""
-        ### Training Dataset
-        
-        #### Source
-        
-        **Patient Cohort**
-        - Disease: Glioblastoma Multiforme (GBM)
-        - Institutional source: Multi-center clinical repository
-        - Collection period: 2015-2023
-        - Geographic diversity: North American and European centers
-        - Age range: 18-85 years
-        - Treatment-naive and treated patients included
-        
-        **Sample Size**
-        - Training set: Determined by available multi-omics data
-        - Validation set: 20% held-out
-        - Test set: Independent external cohort
-        - Class distribution: Balanced via oversampling
-        
-        **Outcome Variable**
-        - Definition: Binary risk classification (high/low)
-        - Based on: Overall survival and progression-free survival
-        - High risk: Death or progression within 12 months
-        - Low risk: Survival beyond 18 months without progression
-        - Censored data handled via exclusion
-        
-        #### Data Preprocessing
-        
-        **Normalization Approach**
-        - Raw values used directly (no scaling during training)
-        - Rationale: Preserves interpretability and clinical relevance
-        - Alternative: Standardization tested but reduced performance
-        - Cross-validation confirmed raw value superiority
-        
-        **Feature Selection**
-        - All 843 biomarkers retained for comprehensive coverage
-        - No feature elimination despite dimensionality
-        - XGBoost's built-in feature selection via tree building
-        - Regularization prevents overfitting
-        
-        **Missing Data Handling**
-        - Zero-imputation for missing measurements
-        - Missingness pattern analysis conducted
-        - MCAR (Missing Completely at Random) assumption validated
-        - Sensitivity analysis confirmed robustness
-        
-        **Class Balance**
-        - Handled via XGBoost's `scale_pos_weight` parameter
-        - SMOTE (Synthetic Minority Oversampling) considered
-        - Weighted loss function preferred
-        - Metrics: Balanced accuracy, F1-score prioritized
-        
-        ### Model Architecture
-        
-        #### XGBoost Hyperparameters
-        
-        **Objective Function**
-        - `binary:logistic`: Logistic regression for binary classification
-        - Output: Probability scores between 0 and 1
-        - Loss: Log-loss (cross-entropy)
-        - Optimization: Gradient descent
-        
-        **Booster Type**
-        - `gbtree`: Gradient boosted decision trees
-        - Alternative dart booster tested
-        - Tree-based superior for tabular data
-        - Ensemble of 100-500 trees
-        
-        **Regularization Parameters**
-        - L1 penalty (alpha): Controls feature sparsity
-        - L2 penalty (lambda): Controls model complexity
-        - Gamma: Minimum loss reduction for split
-        - Min child weight: Prevents overfitting on rare patterns
-        
-        **Tree Structure**
-        - Max depth: 3-6 levels (controls complexity)
-        - Min child weight: 1-5 samples
-        - Subsample: 0.8 (row sampling per tree)
-        - Colsample_bytree: 0.8 (column sampling per tree)
-        
-        **Learning Parameters**
-        - Learning rate (eta): 0.01-0.1
-        - Number of rounds: 100-1000
-        - Early stopping: 50 rounds without improvement
-        - Eval metric: AUC-ROC on validation set
-        
-        #### Training Process
-        
-        **Cross-Validation Strategy**
-        - 5-fold stratified cross-validation
-        - Hyperparameter grid search
-        - Bayesian optimization for efficiency
-        - Repeated CV for stable estimates
-        
-        **Early Stopping**
-        - Monitors validation loss
-        - Prevents overtraining
-        - Saves best model automatically
-        - Patience parameter: 50 rounds
-        
-        **Evaluation Metrics**
-        - Primary: AUC-ROC (Area Under ROC Curve)
-        - Secondary: Balanced accuracy, F1-score
-        - Calibration: Brier score, calibration plots
-        - Clinical utility: Decision curve analysis
-        
-        **Model Selection Criteria**
-        - Highest validation AUC-ROC
-        - Good calibration (Brier < 0.15)
-        - Stable across folds (low variance)
-        - Interpretable feature importances
-        
-        ### Model Outputs
-        
-        #### Risk Score
-        
-        **Range and Interpretation**
-        - Range: 0.0 (lowest risk) to 1.0 (highest risk)
-        - Interpretation: Probability of belonging to high-risk class
-        - Calibrated: Scores reflect true probabilities
-        - Uncertainty: Confidence intervals available via bootstrap
-        
-        **Threshold Selection**
-        - Default: 0.5 cutoff for binary classification
-        - Optimal: May vary by clinical context
-        - Sensitivity-focused: Lower threshold (0.3-0.4)
-        - Specificity-focused: Higher threshold (0.6-0.7)
-        
-        **Clinical Use Guidelines**
-        - Scores > 0.7: Very high risk, aggressive treatment
-        - Scores 0.5-0.7: Moderate-high risk, standard treatment
-        - Scores 0.3-0.5: Low risk, surveillance acceptable
-        - Scores < 0.3: Very low risk, minimal intervention
-        
-        **Confidence Assessment**
-        - Scores near 0 or 1: High confidence
-        - Scores near 0.5: Low confidence (borderline)
-        - Variance from ensemble: Model uncertainty
-        - Bootstrap intervals: Estimation uncertainty
-        
-        #### Prediction Label
-        
-        **High Risk**
-        - Definition: Patients likely to have poor outcomes
-        - Criteria: Risk score ≥ 0.5
-        - Implications: Consider aggressive intervention
-        - Expected outcomes: Progression/death within 12 months
-        
-        **Low Risk**
-        - Definition: Patients with favorable prognosis
-        - Criteria: Risk score < 0.5
-        - Implications: Standard or surveillance approach
-        - Expected outcomes: Survival beyond 18 months
-        
-        **Decision Boundary**
-        - Threshold: 50% probability
-        - Rationale: Maximizes balanced accuracy
-        - Adjustable: Based on cost-benefit analysis
-        - Clinical context: Resource availability, patient preferences
-        
-        ### Feature Importance
-        
-        #### Calculation Method
-        
-        **Gain-Based Importance**
-        - Definition: Average gain across all splits using the feature
-        - Measures: Improvement in objective function
-        - Normalized: Scaled to sum to 1.0
-        - Stable: Consistent across training runs
-        
-        **Interpretation Guidelines**
-        - Higher values: Stronger predictive power
-        - Relative comparison: Ranking more important than absolute values
-        - Not causal: Association, not causation
-        - Population-level: May not apply to individuals
-        
-        **Global Scope**
-        - Aggregated across all trees in the ensemble
-        - Averaged over all patients in training set
-        - Robust: Large sample size reduces variance
-        - Validated: Consistent in external cohorts
-        
-        **Clinical Use Case**
-        - Laboratory focus: Prioritize high-importance biomarkers
-        - Cost-effectiveness: Measure critical markers first
-        - Research: Validate known and discover novel markers
-        - Therapy: Target pathways with important markers
-        
-        #### Top Influencers
-        
-        The model identifies biomarkers with strongest impact on risk probability. 
-        These are displayed in the Global Biomarker Influence chart for clinical interpretation.
-        
-        **Typical Top 10 Markers** (example from validation cohort)
-        1. EGFR_prot (Epidermal Growth Factor Receptor)
-        2. TP53_prot (Tumor Protein p53)
-        3. IDH1_rna (Isocitrate Dehydrogenase 1)
-        4. MGMT_rna (O6-Methylguanine-DNA Methyltransferase)
-        5. TERT_rna (Telomerase Reverse Transcriptase)
-        6. PTEN_prot (Phosphatase and Tensin Homolog)
-        7. VEGFA_rna (Vascular Endothelial Growth Factor A)
-        8. MYC_rna (MYC Proto-Oncogene)
-        9. CDK4_prot (Cyclin-Dependent Kinase 4)
-        10. RB1_prot (Retinoblastoma 1)
-        
-        #### Biological Interpretation
-        
-        **High-Importance Proteins**
-        - May indicate aggressive tumor biology
-        - Often druggable targets
-        - Correlate with pathway dysregulation
-        - Validate known oncogenes/tumor suppressors
-        
-        **RNA Signatures**
-        - Reflect transcriptional dysregulation
-        - Indicate metabolic reprogramming
-        - Correlate with cell proliferation
-        - Potential biomarkers for liquid biopsy
-        
-        **Metabolite Markers**
-        - Capture tumor microenvironment changes
-        - Indicate hypoxia and acidosis
-        - Reflect metabolic dependencies
-        - Potential imaging biomarkers
-        
-        ### Model Limitations
-        
-        #### Scope Limitations
-        
-        **Disease Specificity**
-        - Trained only on glioblastoma patients
-        - Not applicable to other brain tumors
-        - Not validated for recurrent disease
-        - Limited to adult patients (≥18 years)
-        
-        **Population Representativeness**
-        - Performance may vary across demographics
-        - Limited diversity in training cohort
-        - Geographic generalizability unknown
-        - Ethnic/racial disparities possible
-        
-        **Biomarker Coverage**
-        - Limited to 843 measured features
-        - Novel markers not included
-        - Emerging biomarkers require retraining
-        - Technology-dependent measurements
-        
-        #### Clinical Considerations
-        
-        **Not Diagnostic**
-        - Provides risk stratification, not diagnosis
-        - Requires histopathological confirmation
-        - Supplements clinical assessment
-        - Does not replace gold standard tests
-        
-        **Adjunct Tool**
-        - Should complement, not replace, clinical judgment
-        - Consider patient comorbidities
-        - Integrate with imaging findings
-        - Discuss in multidisciplinary meetings
-        
-        **Validation Requirements**
-        - Requires external validation in prospective studies
-        - Performance metrics from single cohort
-        - Generalizability not guaranteed
-        - Local validation recommended
-        
-        #### Technical Constraints
-        
-        **Missing Data**
-        - Zero-filling may not capture true baseline for all markers
-        - Extensive missingness reduces accuracy
-        - Imputation assumptions may be violated
-        - Complete data preferred
-        
-        **Batch Effects**
-        - Assumes consistent measurement protocols across labs
-        - Platform differences may affect results
-        - Calibration required for new technologies
-        - Quality control essential
-        
-        **Temporal Drift**
-        - Model may need retraining as treatment standards evolve
-        - Biomarker distributions may shift over time
-        - Performance degradation possible
-        - Periodic recalibration recommended
-        
-        **Computational Limitations**
-        - Large file processing may be slow
-        - Memory constraints for very large cohorts
-        - Real-time updates not supported
-        - Batch processing preferred
-        
-        ### Recommendations
-        
-        **1. Clinical Integration**
-        - Present at multidisciplinary tumor board discussions
-        - Integrate with neurosurgical and radiation oncology plans
-        - Consider molecular profile alongside clinical factors
-        - Document use in treatment rationale
-        
-        **2. Threshold Tuning**
-        - Adjust risk cutoffs based on institutional resources
-        - High-resource centers: Lower threshold (more aggressive)
-        - Limited-resource centers: Higher threshold (selective)
-        - Patient preference: Shared decision-making
-        
-        **3. Performance Monitoring**
-        - Track model performance on real-world patients
-        - Compare predictions to actual outcomes
-        - Identify drift or degradation
-        - Recalibrate if necessary
-        
-        **4. Model Updating**
-        - Periodically retrain with new data
-        - Incorporate emerging biomarkers
-        - Update to maintain accuracy
-        - Version control for reproducibility
-        
-        **5. Quality Assurance**
-        - Validate lab measurement protocols
-        - Ensure consistent sample processing
-        - Perform regular calibration checks
-        - Document data quality metrics
+        1. Suitable for de-identified research data
+        2. No PHI storage or transmission
+        3. Audit logging available
+        4. Compliant with de-identification standards
+        5. Business Associate Agreement available
+        
+        **Best Practices**
+        1. Remove patient names from CSV files
+        2. Use study IDs instead of medical record numbers
+        3. Strip dates to month/year only
+        4. Exclude geographic identifiers below state level
+        5. Review data before upload
         """)
 
 # ============================================================================
@@ -1674,9 +898,9 @@ elif page == "Demo Walkthrough":
             
             st.info("""
             **What you see:**
-            - 3 rows = 3 sample patients
-            - Columns = Biomarker measurements
-            - Values = Simulated lab results
+            1. 3 rows = 3 sample patients
+            2. Columns = Biomarker measurements
+            3. Values = Simulated lab results
             
             These are realistic values based on actual GBM patient data patterns.
             """)
@@ -1754,10 +978,10 @@ elif page == "Demo Walkthrough":
             <h3>Tutorial Complete</h3>
             <p>You've learned how to:</p>
             <ul>
-                <li>Work with sample patient data</li>
-                <li>Run risk analysis</li>
-                <li>View cohort results</li>
-                <li>Examine individual patients</li>
+                <li>1. Work with sample patient data</li>
+                <li>2. Run risk analysis</li>
+                <li>3. View cohort results</li>
+                <li>4. Examine individual patients</li>
             </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -1799,25 +1023,25 @@ elif page == "Demo Walkthrough":
             
             with st.expander("Understanding Risk Scores"):
                 st.write("""
-                - **0-30%**: Very Low Risk
-                - **30-50%**: Low Risk  
-                - **50-70%**: Moderate-High Risk
-                - **70-100%**: Very High Risk
+                1. **0-30%**: Very Low Risk
+                2. **30-50%**: Low Risk  
+                3. **50-70%**: Moderate-High Risk
+                4. **70-100%**: Very High Risk
                 """)
             
             with st.expander("Biomarker Types"):
                 st.write("""
-                - **_prot**: Protein measurements
-                - **_rna**: RNA expression levels
-                - **_met**: Metabolite concentrations
+                1. **_prot**: Protein measurements
+                2. **_rna**: RNA expression levels
+                3. **_met**: Metabolite concentrations
                 """)
             
             with st.expander("Chart Types"):
                 st.write("""
-                - **Gauge**: Individual risk percentage
-                - **Histogram**: Cohort distribution
-                - **Radar**: Multi-modal balance
-                - **Bar Charts**: Biomarker levels
+                1. **Gauge**: Individual risk percentage
+                2. **Histogram**: Cohort distribution
+                3. **Radar**: Multi-modal balance
+                4. **Bar Charts**: Biomarker levels
                 """)
         
         with exploration_tab[2]:
@@ -1834,10 +1058,10 @@ elif page == "Demo Walkthrough":
             
             st.success("""
             **What Makes a Good Analysis:**
-            - Review both cohort and individual results
-            - Compare patient markers to global importance
-            - Note the multi-modal signature shape
-            - Look for biomarker clusters
+            1. Review both cohort and individual results
+            2. Compare patient markers to global importance
+            3. Note the multi-modal signature shape
+            4. Look for biomarker clusters
             """)
 
     # Add reset button at bottom of demo page
