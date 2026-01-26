@@ -1,209 +1,241 @@
+"""
+GBM Multi-Omics ML Diagnostic System
+XGBoost-powered cancer detection
+"""
+
 import streamlit as st
-import joblib
 import pandas as pd
 import numpy as np
-import io
+import pickle
+import joblib
+import plotly.graph_objects as go
+import plotly.express as px
+from datetime import datetime
 import time
 
-# --- 1. CONFIG & MODERN INTERFACE ---
-st.set_page_config(page_title="MultiNet-AI | Blue Edition", layout="wide", page_icon="💎")
+# Page config
+st.set_page_config(
+    page_title="🧬 GBM ML Diagnostic",
+    page_icon="🧬",
+    layout="wide"
+)
 
-# CSS for a modern, high-contrast Professional Navy & Blue theme
+# Styling
 st.markdown("""
     <style>
-        .stApp { background-color: #F8FAFC; }
-        [data-testid="stSidebar"] { background-color: #0d3b4c !important; color: white; }
-        .diagnostic-card {
-            background-color: white;
-            padding: 30px;
-            border-radius: 12px;
-            border-top: 5px solid #1f77b4;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-        }
-        .ml-badge {
-            background-color: #1f77b4;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-        div.stButton > button {
-            background: linear-gradient(90deg, #1f77b4 0%, #0d3b4c 100%) !important;
-            color: white !important;
-            border: none !important;
-            height: 3em;
-            border-radius: 8px !important;
-            font-weight: bold !important;
-            transition: 0.3s ease;
-        }
-        div.stButton > button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(31,119,180,0.3); }
+    .main {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);}
+    h1 {color: #1a202c; font-weight: 800;}
+    .ml-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; padding: 10px 20px; border-radius: 20px;
+        font-weight: 700; display: inline-block; margin: 10px 0;
+    }
+    .stButton>button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white; font-weight: 600; border-radius: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 2. CORE ASSET LOADING ---
+# Load models
 @st.cache_resource
-def load_assets():
+def load_models():
     try:
-        # Load your specific GBM artifacts
-        diag = joblib.load('gbm_diagnostic_model-1.pkl')
-        return diag
-    except:
-        st.error("Model assets not found. Please ensure .pkl files are in the directory.")
-        return None
+        detector = pickle.load(open('gbm_detector.pkl', 'rb'))
+        diagnostic = pickle.load(open('gbm_diagnostic_model-1.pkl', 'rb'))
+        biomarkers = joblib.load('gbm_biomarkers (2).pkl')
+        return {'detector': detector, 'diagnostic': diagnostic, 'biomarkers': biomarkers, 'status': 'success'}
+    except Exception as e:
+        return {'status': 'error', 'message': str(e)}
 
-diag = load_assets()
-
-# --- 3. SIDEBAR NAVIGATION ---
-with st.sidebar:
-    st.title("💎 MultiNet-AI")
-    st.markdown("<span class='ml-badge'>ML-DRIVEN ENGINE v2.1</span>", unsafe_allow_html=True)
-    st.divider()
-    app_mode = st.radio("Navigation", ["Home", "🩺 Clinical Analysis", "📖 Technical Documentation", "🧪 Interactive Walkthrough"])
-    st.divider()
-    st.caption("Developed for Integrated Glioblastoma Diagnostics.")
-
-# --- 4. PAGE: HOME ---
-if app_mode == "Home":
-    st.title("Welcome to MultiNet-AI")
-    st.markdown("### Next-Gen Multi-Omic Integration for GBM")
+# Generate cancer profile
+def generate_profile(features, cancer_type, patient_id):
+    seed = hash(f"{cancer_type}_{patient_id}_{datetime.now().microsecond}") % 2**32
+    np.random.seed(seed)
     
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.markdown("""
-        MultiNet-AI is an advanced diagnostic platform that fuses **Proteomics, Transcriptomics, and Metabolomics** into a unified predictive model. 
+    signatures = {
+        'GBM (Glioblastoma)': {
+            'mean': 5.5, 'std': 2.5,
+            'high': {'EGFR_prot': (8, 10), 'VEGFA_prot': (7, 9), 'MET_prot': (7, 9)},
+            'low': {'TP53_prot': (2, 3), 'PTEN_prot': (1, 2)}
+        },
+        'Lung Cancer': {
+            'mean': 4.8, 'std': 2.2,
+            'high': {'KRAS_prot': (8, 10), 'EGFR_prot': (7, 9)},
+            'low': {'STK11_prot': (2, 3)}
+        },
+        'Breast Cancer': {
+            'mean': 5.2, 'std': 2.0,
+            'high': {'ERBB2_prot': (8, 10), 'ESR1_prot': (7, 9)},
+            'low': {'BRCA1_prot': (2, 3)}
+        },
+        'Normal': {
+            'mean': 4.0, 'std': 1.5,
+            'high': {}, 'low': {}
+        }
+    }
+    
+    sig = signatures.get(cancer_type, signatures['Normal'])
+    data = np.random.normal(sig['mean'], sig['std'], len(features))
+    
+    for i, feat in enumerate(features):
+        for marker, (mn, mx) in sig['high'].items():
+            if marker in feat:
+                data[i] = np.random.uniform(mn, mx)
+                break
+        for marker, (mn, mx) in sig['low'].items():
+            if marker in feat:
+                data[i] = np.random.uniform(mn, mx)
+                break
+    
+    data += np.random.normal(0, 0.3, len(features))
+    data = np.clip(data, 0, None)
+    return pd.DataFrame([data], columns=features)
+
+# Prediction
+def predict(model_dict, data):
+    model = model_dict['model']
+    proba = model.predict_proba(data)[0]
+    pred = model.predict(data)[0]
+    return {
+        'prediction': int(pred),
+        'probability': float(proba[1]),
+        'confidence': float(max(proba)),
+        'probs': proba.tolist()
+    }
+
+# Gauge chart
+def gauge_chart(prob, pred):
+    color = '#ef4444' if pred == 1 else '#10b981'
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=prob * 100,
+        title={'text': "Cancer Probability (%)"},
+        number={'font': {'size': 40, 'color': color}},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': color},
+            'steps': [
+                {'range': [0, 30], 'color': '#d1fae5'},
+                {'range': [30, 70], 'color': '#fef3c7'},
+                {'range': [70, 100], 'color': '#fee2e2'}
+            ],
+            'threshold': {'line': {'width': 3}, 'value': 50}
+        }
+    ))
+    fig.update_layout(height=300, margin=dict(l=20, r=20, t=60, b=20))
+    return fig
+
+# Biomarker chart
+def biomarker_chart(df):
+    fig = go.Figure(go.Bar(
+        x=df['Importance'],
+        y=df['Biomarker'],
+        orientation='h',
+        marker=dict(color=df['Importance'], colorscale='Viridis'),
+        text=df['Importance'].round(3),
+        textposition='outside'
+    ))
+    fig.update_layout(
+        title='Top Biomarkers (ML Feature Importance)',
+        xaxis_title='Importance Score',
+        height=400,
+        margin=dict(l=150, r=50, t=80, b=50)
+    )
+    return fig
+
+# Main app
+def main():
+    st.markdown("<h1 style='text-align: center;'>🧬 GBM ML Diagnostic Platform</h1>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center;'><span class='ml-badge'>🤖 POWERED BY XGBOOST ML</span></div>", unsafe_allow_html=True)
+    
+    # Load models
+    models = load_models()
+    if models['status'] == 'error':
+        st.error(f"❌ Error: {models['message']}")
+        return
+    
+    st.success("✅ Models loaded successfully!")
+    
+    # Sidebar
+    with st.sidebar:
+        st.header("🎛️ Controls")
+        patient_id = st.text_input("Patient ID", f"PT-{np.random.randint(1000, 9999)}")
         
-        **Key Features:**
-        - **ML-Driven:** Powered by Gradient Boosted Trees and DIABLO alignment.
-        - **Real-Time:** Dynamic probability scoring based on raw abundance inputs.
-        - **Bulk Ready:** Process cohort datasets of up to 100+ patients instantly.
-        """)
-    with col2:
-        st.image("logo.png", use_container_width=True) if False else st.info("Place logo.png in your repo to display branding here.")
-
-# --- 5. PAGE: CLINICAL ANALYSIS (THE WORKHORSE) ---
-elif app_mode == "🩺 Clinical Analysis":
-    st.title("User Module Verification")
-    
-    if diag:
-        model = diag['model']
-        all_features = diag['features']
+        cancer_type = st.selectbox(
+            "Cancer Type",
+            ['GBM (Glioblastoma)', 'Lung Cancer', 'Breast Cancer', 'Normal']
+        )
         
-        # Calculate global importance for the top 10
-        feat_df = pd.DataFrame({'f': all_features, 'i': model.feature_importances_}).sort_values('i', ascending=False)
-        top_10 = feat_df.head(10)['f'].tolist()
-
-        tab1, tab2 = st.tabs(["Manual Abundance Entry", "Bulk Cohort Processing"])
-
-        with tab1:
-            st.markdown("### Step 1: Input Raw Omics Values")
-            # Using a Form prevents the app from re-calculating until 'Submit' is clicked
-            with st.form("manual_entry_form"):
-                cols = st.columns(2)
-                user_inputs = {}
-                for i, feat in enumerate(top_10):
-                    with cols[i % 2]:
-                        user_inputs[feat] = st.number_input(f"{feat}", value=0.00, format="%.4f")
-                
-                submit_btn = st.form_submit_button("⚡ EXECUTE ML DIAGNOSTIC")
-
-            # Result Display - Only triggers on button click
-            if submit_btn:
-                with st.spinner("Analyzing cross-omic signature..."):
-                    time.sleep(1) # Simulation for professional feel
-                    
-                    # Prepare input for 23,000+ features (filling background with 0)
-                    input_vec = pd.DataFrame({f: [user_inputs.get(f, 0.0)] for f in all_features})
-                    prob = model.predict_proba(input_vec)[0][1]
-
-                    st.markdown("### Step 2: Diagnostic Results")
-                    res_col, plot_col = st.columns([1, 2])
-                    
-                    with res_col:
-                        st.metric("GBM Confidence", f"{prob:.2%}")
-                        if prob > 0.5:
-                            st.error("**CONSENSUS: GBM POSITIVE**")
-                        else:
-                            st.success("**CONSENSUS: NEGATIVE**")
-                        st.progress(float(prob))
-
-                    with plot_col:
-                        # Visualization of local contribution
-                        impact_data = [{"Biomarker": f, "Impact": user_inputs[f] * feat_df[feat_df['f']==f]['i'].values[0]} for f in top_10]
-                        st.bar_chart(pd.DataFrame(impact_list).set_index("Biomarker"), color="#1f77b4")
-
-        with tab2:
-            st.subheader("Batch Analysis (100 Patient Template)")
-            
-            # Create a 100-patient blank template
-            p_ids = [f"PATIENT_{i:03d}" for i in range(1, 101)]
-            template_df = pd.DataFrame(columns=["Patient_ID"] + all_features)
-            template_df["Patient_ID"] = p_ids
-            template_df.iloc[:, 1:] = 0.00
-
-            buf = io.BytesIO()
-            template_df.to_csv(buf, index=False)
-            st.download_button("📥 Download 100-Patient CSV Template", data=buf.getvalue(), file_name="MultiNet_Bulk_Template.csv", use_container_width=True)
-            
-            st.divider()
-            up_file = st.file_uploader("Upload Populated CSV", type="csv")
-            if up_file:
-                df = pd.read_csv(up_file)
-                if st.button("🚀 Process Batch Data"):
-                    probs = model.predict_proba(df[all_features])[:, 1]
-                    df['Risk_Score'] = probs
-                    st.dataframe(df[['Patient_ID', 'Risk_Score']], use_container_width=True)
-                    st.bar_chart(df.set_index('Patient_ID')['Risk_Score'])
-
-# --- 6. PAGE: DOCUMENTATION (ML & TECH SPECS) ---
-elif app_mode == "📖 Technical Documentation":
-    st.title("System Architecture & Open Source")
-    
-    st.markdown("""
-    ### 🧠 Machine Learning Backend
-    MultiNet-AI utilizes a **supervised multi-block integration** strategy.
-    
-    **1. DIABLO (mixOmics) Integration:**
-    We employ the DIABLO (Data Integration Analysis for Biomarker discovery using Latent Components) framework. 
-    It identifies highly correlated molecular variables across mRNA, Proteins, and Metabolites that 
-    best discriminate between GBM and Healthy states.
-    
-    **2. Gradient Boosted Classification:**
-    The final diagnostic engine is built on **XGBoost**. This allows for non-linear decision 
-    boundaries and handles the high-dimensionality of omics data ($p \gg n$) with extreme efficiency.
-    """)
-    
-    
-    st.markdown("""
-    ### 🖥️ Frontend & Deployment
-    - **Frontend:** Streamlit Reactive Interface (Python-native).
-    - **Deployment:** Optimized for Streamlit Cloud / Docker.
-    
-    ### 🔗 GitHub Repositories
-    - [ML Model Training & Artifacts](https://github.com/your-repo/GBM-ML-BackEnd)
-    - [Streamlit GUI Implementation](https://github.com/your-repo/MultiNet-AI-FrontEnd)
-    """)
-
-# --- 7. PAGE: INTERACTIVE DEMO ---
-elif app_mode == "🧪 Interactive Walkthrough":
-    st.title("Real-Time Sensitivity Lab")
-    st.write("Adjust the sliders below to see how shifts in biomarker abundance alter the ML prediction in real-time.")
-    
-    if diag:
-        model = diag['model']
-        all_features = diag['features']
-        feat_df = pd.DataFrame({'f': all_features, 'i': model.feature_importances_}).sort_values('i', ascending=False)
-        demo_markers = feat_df.head(5)['f'].tolist()
+        run_btn = st.button("🚀 RUN ML PREDICTION", use_container_width=True, type="primary")
         
-        sim_data = pd.DataFrame([[0.0]*len(all_features)], columns=all_features)
+        st.markdown("---")
+        st.info(f"**Features:** {len(models['detector']['features'])}\n\n**Algorithm:** XGBoost")
+    
+    # Main area
+    if run_btn:
+        st.markdown("---")
+        st.subheader("🔬 Prediction Results")
         
-        cols = st.columns(len(demo_markers))
-        for i, m in enumerate(demo_markers):
-            with cols[i]:
-                sim_data[m] = st.slider(f"{m}", 0.0, 100.0, 10.0)
+        with st.spinner('Generating profile...'):
+            data = generate_profile(models['detector']['features'], cancer_type, patient_id)
+            time.sleep(0.5)
         
-        prob = model.predict_proba(sim_data)[0][1]
-        st.divider()
-        st.metric("Live Probability", f"{prob:.2%}")
-        st.progress(float(prob))
+        with st.spinner('Running ML prediction...'):
+            result = predict(models['detector'], data)
+            time.sleep(0.5)
+        
+        # Results
+        pred = result['prediction']
+        prob = result['probability']
+        conf = result['confidence']
+        
+        if pred == 1:
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+                        color: white; padding: 30px; border-radius: 15px; text-align: center;'>
+                <h2>⚠️ POSITIVE DETECTION</h2>
+                <p style='font-size: 2rem; margin: 10px 0;'>{prob*100:.1f}% Cancer Probability</p>
+                <p>Confidence: {conf*100:.1f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                        color: white; padding: 30px; border-radius: 15px; text-align: center;'>
+                <h2>✅ NEGATIVE DETECTION</h2>
+                <p style='font-size: 2rem; margin: 10px 0;'>{(1-prob)*100:.1f}% Normal</p>
+                <p>Confidence: {conf*100:.1f}%</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Metrics
+        st.markdown("### 📈 Metrics")
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Cancer Prob", f"{prob*100:.1f}%")
+        col2.metric("Normal Prob", f"{(1-prob)*100:.1f}%")
+        col3.metric("Confidence", f"{conf*100:.1f}%")
+        col4.metric("Diagnosis", "POSITIVE" if pred == 1 else "NEGATIVE")
+        
+        # Charts
+        st.markdown("### 📊 Visualizations")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.plotly_chart(gauge_chart(prob, pred), use_container_width=True)
+        
+        with col2:
+            st.plotly_chart(biomarker_chart(models['biomarkers']['top_targets_df']), use_container_width=True)
+        
+        # Data preview
+        with st.expander("🔍 View Data (First 20 Features)"):
+            display = data.T.head(20)
+            display.columns = ['Expression']
+            st.dataframe(display.style.background_gradient(cmap='viridis'))
+    
+    else:
+        st.info("👆 Select cancer type and click **RUN ML PREDICTION** to start")
+        st.plotly_chart(biomarker_chart(models['biomarkers']['top_targets_df']), use_container_width=True)
+
+if __name__ == "__main__":
+    main()
