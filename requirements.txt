@@ -1,14 +1,8 @@
-# Core Data Science
+streamlit
 pandas
 numpy
 xgboost
-scikit-learn
-
-# Interface & Visualization
-streamlit
-plotly
 shap
-matplotlib
-
-# Clinical Reporting
+plotly
 fpdf
+matplotlib
