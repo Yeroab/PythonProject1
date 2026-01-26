@@ -2,533 +2,120 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import shap
+import plotly.express as px
+import plotly.graph_objects as go
+from fpdf import FPDF
 import io
 
-# Set page config
-st.set_page_config(page_title="MultiNet-AI", page_icon="💎", layout="wide")
+# 1. Configuration & Model Loading [cite: 1, 2]
+st.set_page_config(page_title="GBM Clinical Predictor", layout="wide")
 
-# Helper function for type-specific default values
-def get_default_value(feature_name):
-    """Return appropriate default value based on omics data type"""
-    if feature_name.endswith('_prot'):
-        return 0.0      # Log2-transformed proteins centered at 0
-    elif feature_name.endswith('_rna'):
-        return 1000.0   # Typical RNA count value
-    elif feature_name.endswith('_met'):
-        return 10.0     # Metabolite baseline
-    else:
-        return np.nan   # Let XGBoost handle missing values
-
-# Helper function to validate input ranges
-def validate_input(feature_name, value):
-    """Catch only obvious data entry errors (negative values for counts/concentrations)"""
-    warnings = []
-    if feature_name.endswith('_rna') or feature_name.endswith('_met'):
-        if value < 0:
-            warnings.append(f"⚠️ {feature_name}: {value:.2f} is negative (should be >= 0)")
-    return warnings
-
-# Load model assets
 @st.cache_resource
 def load_assets():
-    """Load the diagnostic model"""
-    try:
-        # Load the diagnostic model (use detector or diagnostic_model-1)
-        with open('gbm_detector.pkl', 'rb') as f:
-            diag = pickle.load(f)
-        
-        return diag
-    except Exception as e:
-        st.error(f"Error loading model files: {e}")
-        return None
+    with open('gbm_clinical_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    # Extract feature names and types from the model booster 
+    feature_names = model.get_booster().feature_names
+    feature_types = model.get_booster().feature_types
+    return model, feature_names, feature_types
 
-# Load assets at startup
-diag = load_assets()
+model, feature_names, feature_types = load_assets()
 
-# Sidebar Navigation
-st.sidebar.title("💎 MultiNet-AI")
-app_mode = st.sidebar.radio(
-    "Navigation",
-    ["Home", "📖 App Documentation", "🩺 Input your own omics data", "🧪 Interactive Demo Walkthrough"]
-)
+# 2. Sidebar - Navigation & Template Download
+st.sidebar.header("Navigation")
+app_mode = st.sidebar.radio("Go to", ["Single Prediction", "Batch Processing", "Model Insights"])
 
-# --- PAGE 0: HOME PAGE ---
-if app_mode == "Home":
-    st.title("MultiNet-AI: Glioblastoma Diagnostic Platform")
-    st.markdown("""
-    ### Welcome to MultiNet-AI
-    
-    This platform integrates high-dimensional multi-omics data with gradient-boosted machine learning to provide 
-    real-time diagnostic insights into Glioblastoma Multiforme (GBM).
-    
-    #### Key Features:
-    - 🧬 **Multi-omics Integration**: Combines protein, RNA, and metabolite data
-    - 🤖 **Machine Learning**: XGBoost classifier with 843 features
-    - 📊 **Biomarker Analysis**: Identifies top 10 critical diagnostic markers
-    - 💡 **Real-time Predictions**: Instant GBM vs Normal classification
-    
-    #### Navigate to:
-    - **Input your own omics data**: Run diagnostics on your samples
-    - **App Documentation**: Learn about the methodology
-    - **Interactive Demo**: See example walkthroughs
-    
-    ---
-    **Model Information:**
-    - Total Features: 843 (354 proteins, 423 RNAs, 66 metabolites)
-    - Algorithm: XGBoost Classifier
-    - Top 10 Biomarkers account for ~98% of decision-making
-    """)
+# Template Download [cite: 3]
+template_df = pd.DataFrame(columns=feature_names)
+csv_template = template_df.to_csv(index=False).encode('utf-8')
+st.sidebar.download_button("Download CSV Template", data=csv_template, file_name="gbm_template.csv", mime="text/csv")
 
-# --- PAGE 1: APP DOCUMENTATION ---
-elif app_mode == "📖 App Documentation":
-    st.title("MultiNet-AI Web Application Documentation")
-    
-    st.markdown("""
-    <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px;">
-    
-    ## Overview
-    MultiNet-AI is a diagnostic platform for Glioblastoma Multiforme (GBM) using multi-omics data integration.
-    
-    ## Data Requirements
-    
-    ### Input Features (843 total)
-    
-    1. **Protein Expression (354 features)**
-       - Format: Log2-transformed protein abundance
-       - Typical range: -3 to 5 (centered around 0)
-       - Example: AACS_prot, BCHE_prot
-       
-    2. **RNA Expression (423 features)**
-       - Format: Raw or normalized transcript counts
-       - Typical range: 0 to 50,000
-       - Example: MIAT_rna, SYK_rna
-       
-    3. **Metabolite Levels (66 features)**
-       - Format: Concentration or intensity values
-       - Range varies by compound
-       - Example: L-mimosine_met, citricacid_met
-    
-    ## Top 10 Critical Biomarkers
-    
-    These biomarkers account for ~98% of the model's predictive power:
-    
-    1. **AACS_prot** - Acetoacetyl-CoA synthetase (Protein)
-    2. **BCHE_prot** - Butyrylcholinesterase (Protein)
-    3. **MIAT_rna** - Myocardial infarction associated transcript (RNA)
-    4. **CFB_prot** - Complement factor B (Protein)
-    5. **FGB_prot** - Fibrinogen beta chain (Protein)
-    6. **SYK_rna** - Spleen tyrosine kinase (RNA)
-    7. **HRG_prot** - Histidine-rich glycoprotein (Protein)
-    8. **ANLN_prot** - Anillin (Protein)
-    9. **AATK_prot** - Apoptosis-associated tyrosine kinase (Protein)
-    10. **L-mimosine_met** - L-mimosine (Metabolite)
-    
-    ## Model Architecture
-    
-    - **Algorithm**: XGBoost (Gradient Boosted Trees)
-    - **Training**: Multi-omics GBM dataset
-    - **Output**: Binary classification (GBM vs Normal) with probability score
-    - **Missing Values**: Handled automatically by XGBoost
-    
-    ## Usage Modes
-    
-    ### Manual Entry
-    - Enter values for top 10 biomarkers
-    - Remaining 833 features filled with type-specific defaults
-    - Get instant prediction and feature impact analysis
-    
-    ### Bulk CSV Upload
-    - Upload patient cohort data
-    - Process multiple samples simultaneously
-    - Download results with risk scores
-    
-    ## Interpretation
-    
-    - **Probability > 0.5**: GBM signature detected
-    - **Probability < 0.5**: Normal signature
-    - **Feature Impact Chart**: Shows which biomarkers drove the prediction
-    
-    ## Technical Notes
-    
-    - Default values for missing features are type-specific:
-      - Proteins: 0.0 (log2-centered)
-      - RNA: 1000.0 (median count)
-      - Metabolites: 10.0 (baseline)
-    - Model uses XGBoost's built-in handling for NaN values
-    
-    </div>
-    """, unsafe_allow_html=True)
+# 3. Core Functions
+def generate_pdf_report(prediction, proba, shap_values, features):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, "GBM Clinical Prediction Report", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    pdf.cell(200, 10, f"Prediction Result: {'High Risk' if prediction == 1 else 'Low Risk'}", ln=True)
+    pdf.cell(200, 10, f"Confidence: {proba[1]:.2%}", ln=True)
+    # Add more clinical notes here
+    return pdf.output(dest='S').encode('latin-1')
 
-# --- PAGE 2: DIAGNOSTIC INTERFACE ---
-elif app_mode == "🩺 Input your own omics data":
-    st.title("User Analysis Page")
+# 4. Main App Logic
+if app_mode == "Batch Processing":
+    st.header("📊 Batch Clinical Processing")
+    uploaded_file = st.file_uploader("Drag and drop clinical data CSV", type="csv")
     
-    if diag:
-        model = diag['model']
-        all_features = diag['features']
-        
-        # Create feature importance dataframe
-        feat_df = pd.DataFrame({
-            'feature': all_features, 
-            'importance': model.feature_importances_
-        }).sort_values(by='importance', ascending=False)
-        
-        top_10 = feat_df['feature'].head(10).tolist()
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+        if len(df.columns) == 843:
+            # Batch Prediction [cite: 2]
+            preds = model.predict(df)
+            probs = model.predict_proba(df)[:, 1]
+            df['Prediction'] = preds
+            df['Probability'] = probs
+            
+            st.write("### Prediction Results")
+            st.dataframe(df[['Prediction', 'Probability']].head())
+            
+            # Interactive Dashboard
+            fig = px.histogram(df, x="Probability", color="Prediction", 
+                               title="Distribution of Risk Probabilities",
+                               color_discrete_map={0: "green", 1: "red"})
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.error(f"Invalid format. Expected 843 features, found {len(df.columns)}.")
 
-        st.subheader("🧬 High-Significance Biomarkers (Top 10)")
-        st.caption(f"Total Features: {len(all_features)} (354 proteins, 423 RNAs, 66 metabolites)")
-        
-        tab1, tab2 = st.tabs(["Manual Abundance Entry", "Bulk CSV Analysis"])
-        
-        # TAB 1: Manual Entry
-        with tab1:
-            st.info("💡 Enter values for the top 10 biomarkers. Remaining features will use intelligent defaults based on data type.")
-            
-            with st.form("manual_entry"):
-                st.write("### Enter Raw Abundance Values")
-                
-                # Display expected ranges
-                with st.expander("📋 Expected Value Ranges", expanded=False):
-                    st.markdown("""
-                    **Protein features (_prot):**  
-                    - Format: Log2-transformed abundance
-                    - Based on your training data
-                    
-                    **RNA features (_rna):**  
-                    - Format: Raw or normalized counts
-                    - Must be >= 0 (counts cannot be negative)
-                    
-                    **Metabolite features (_met):**  
-                    - Format: Concentration/intensity
-                    - Must be >= 0 (concentrations cannot be negative)
-                    
-                    Note: The model will accept any values, but negative RNA counts or 
-                    metabolite concentrations are physically impossible and indicate a data error.
-                    """)
-                
-                # Create input fields
-                cols = st.columns(2)
-                user_inputs = {}
-                
-                for i, feat in enumerate(top_10):
-                    # Determine expected range and default
-                    if feat.endswith('_prot'):
-                        default_val = 0.0
-                        help_text = "Protein (log2-transformed, range: -3 to 5)"
-                    elif feat.endswith('_rna'):
-                        default_val = 1000.0
-                        help_text = "RNA (counts, range: 0 to 50,000)"
-                    elif feat.endswith('_met'):
-                        default_val = 10.0
-                        help_text = "Metabolite (concentration)"
-                    else:
-                        default_val = 0.0
-                        help_text = "Enter value"
-                    
-                    user_inputs[feat] = cols[i % 2].number_input(
-                        f"{feat}", 
-                        value=float(default_val),
-                        help=help_text,
-                        format="%.4f"
-                    )
-                
-                submit = st.form_submit_button("🔬 RUN DIAGNOSTIC CONSENSUS", type="primary")
-            
-            # Results display (OUTSIDE the form)
-            if submit:
-                # Validate inputs
-                all_warnings = []
-                for feat, value in user_inputs.items():
-                    warnings = validate_input(feat, value)
-                    all_warnings.extend(warnings)
-                
-                if all_warnings:
-                    st.warning("⚠️ Input Validation Warnings:")
-                    for warning in all_warnings:
-                        st.write(warning)
-                
-                # 1. Prepare full feature vector (843 features: 354 proteins, 423 RNAs, 66 metabolites)
-                # Use type-specific defaults for features not manually entered
-                full_input = pd.DataFrame({
-                    f: [user_inputs.get(f, get_default_value(f))] 
-                    for f in all_features
-                })
-                
-                # 2. Generate Prediction
-                prob = model.predict_proba(full_input)[0][1]
-                prediction = "GBM" if prob > 0.5 else "Normal"
-                
-                # 3. Display Metrics
-                st.divider()
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Probability of GBM", f"{prob:.2%}")
-                with col2:
-                    st.metric("Classification", prediction)
-                with col3:
-                    confidence = abs(prob - 0.5) * 200  # Convert to 0-100%
-                    st.metric("Confidence", f"{confidence:.1f}%")
-                
-                if prob > 0.5: 
-                    st.error("🔴 CONSENSUS: POSITIVE GBM SIGNATURE DETECTED")
-                else: 
-                    st.success("🟢 CONSENSUS: NEGATIVE (NORMAL) SIGNATURE")
-
-                # 4. Input Summary
-                st.divider()
-                st.write("### 📊 Input Summary")
-                summary_cols = st.columns(3)
-                with summary_cols[0]:
-                    st.metric("Manual Entries", len(user_inputs))
-                with summary_cols[1]:
-                    st.metric("Default Values", len(all_features) - len(user_inputs))
-                with summary_cols[2]:
-                    st.metric("Total Features", len(all_features))
-                
-                # 5. Feature Impact Visualization
-                st.write("### 📈 Local Feature Impact Analysis")
-                st.caption("Shows the weighted contribution of each biomarker to the diagnostic decision.")
-                
-                # Calculate: Input Value × Global Model Importance
-                impact_list = []
-                for feat in top_10:
-                    weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
-                    impact_list.append({
-                        "Biomarker": feat, 
-                        "Input Value": user_inputs[feat],
-                        "Importance": weight,
-                        "Diagnostic Impact": user_inputs[feat] * weight
-                    })
-                
-                # Display impact chart
-                plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
-                st.bar_chart(plot_df[['Diagnostic Impact']], color="#1f77b4")
-                
-                # Display detailed table
-                with st.expander("📋 Detailed Impact Values"):
-                    st.dataframe(
-                        pd.DataFrame(impact_list).style.format({
-                            'Input Value': '{:.4f}',
-                            'Importance': '{:.4f}',
-                            'Diagnostic Impact': '{:.4f}'
-                        }),
-                        use_container_width=True
-                    )
-                
-                # 6. Download Results
-                st.divider()
-                st.write("### 💾 Export Results")
-                
-                # Create results dataframe
-                results_df = pd.DataFrame({
-                    'Metric': ['Prediction', 'Probability', 'Confidence'],
-                    'Value': [prediction, f"{prob:.4f}", f"{confidence:.1f}%"]
-                })
-                
-                inputs_df = pd.DataFrame({
-                    'Feature': list(user_inputs.keys()),
-                    'Value': list(user_inputs.values())
-                })
-                
-                # Combine into downloadable CSV
-                download_buffer = io.StringIO()
-                download_buffer.write("=== PREDICTION RESULTS ===\n")
-                results_df.to_csv(download_buffer, index=False)
-                download_buffer.write("\n=== INPUT VALUES ===\n")
-                inputs_df.to_csv(download_buffer, index=False)
-                
-                st.download_button(
-                    "📥 Download Prediction Report",
-                    data=download_buffer.getvalue(),
-                    file_name="multinet_prediction_report.csv",
-                    mime="text/csv"
-                )
-        
-        # TAB 2: Bulk Upload
-        with tab2:
-            st.subheader("Bulk Data Pipeline")
-            st.caption("Upload CSV with multiple patient samples for batch processing")
-            
-            # Generate template
-            st.write("### 1. Download Template")
-            ordered_template_cols = top_10 + [f for f in all_features if f not in top_10]
-            template_df = pd.DataFrame(columns=['Patient_ID'] + ordered_template_cols)
-            
-            buffer = io.BytesIO()
-            template_df.to_csv(buffer, index=False)
-            
-            st.download_button(
-                "📥 Download CSV Template (All 843 Features)",
-                data=buffer.getvalue(), 
-                file_name="MultiNet_Template.csv",
-                mime="text/csv"
-            )
-            
-            # Upload and process
-            st.write("### 2. Upload Patient Data")
-            uploaded_file = st.file_uploader("Upload Patient Cohort CSV", type=["csv"])
-            
-            if uploaded_file:
-                bulk_df = pd.read_csv(uploaded_file)
-                
-                # Check if Patient_ID exists
-                if 'Patient_ID' not in bulk_df.columns:
-                    st.error("❌ CSV must contain 'Patient_ID' column")
-                else:
-                    # Check feature coverage
-                    available_features = [f for f in all_features if f in bulk_df.columns]
-                    missing_features = [f for f in all_features if f not in bulk_df.columns]
-                    
-                    st.info(f"✓ Found {len(available_features)} of {len(all_features)} features")
-                    
-                    if missing_features:
-                        with st.expander(f"⚠️ {len(missing_features)} features missing (will use defaults)"):
-                            st.write(missing_features[:20])  # Show first 20
-                            if len(missing_features) > 20:
-                                st.write(f"... and {len(missing_features) - 20} more")
-                    
-                    # Fill missing features with defaults
-                    for feat in missing_features:
-                        bulk_df[feat] = get_default_value(feat)
-                    
-                    # Run predictions
-                    if st.button("🔬 Process Cohort", type="primary"):
-                        with st.spinner("Processing samples..."):
-                            # Ensure feature order matches model
-                            X = bulk_df[all_features]
-                            
-                            # Get predictions
-                            bulk_df['GBM_Probability'] = model.predict_proba(X)[:, 1]
-                            bulk_df['Prediction'] = bulk_df['GBM_Probability'].apply(
-                                lambda x: 'GBM' if x > 0.5 else 'Normal'
-                            )
-                            bulk_df['Confidence'] = bulk_df['GBM_Probability'].apply(
-                                lambda x: abs(x - 0.5) * 200
-                            )
-                            
-                            # Display results
-                            st.success(f"✓ Processed {len(bulk_df)} samples")
-                            
-                            # Summary statistics
-                            st.write("### 📊 Cohort Summary")
-                            summary_cols = st.columns(4)
-                            with summary_cols[0]:
-                                st.metric("Total Samples", len(bulk_df))
-                            with summary_cols[1]:
-                                gbm_count = (bulk_df['Prediction'] == 'GBM').sum()
-                                st.metric("GBM Detected", gbm_count)
-                            with summary_cols[2]:
-                                normal_count = (bulk_df['Prediction'] == 'Normal').sum()
-                                st.metric("Normal", normal_count)
-                            with summary_cols[3]:
-                                avg_prob = bulk_df['GBM_Probability'].mean()
-                                st.metric("Avg GBM Prob", f"{avg_prob:.2%}")
-                            
-                            # Visualizations
-                            st.write("### 📈 Risk Score Distribution")
-                            st.bar_chart(
-                                bulk_df.set_index('Patient_ID')['GBM_Probability'],
-                                color="#1f77b4"
-                            )
-                            
-                            # Results table
-                            st.write("### 📋 Detailed Results")
-                            display_cols = ['Patient_ID', 'GBM_Probability', 'Prediction', 'Confidence']
-                            st.dataframe(
-                                bulk_df[display_cols].style.format({
-                                    'GBM_Probability': '{:.4f}',
-                                    'Confidence': '{:.1f}%'
-                                }),
-                                use_container_width=True
-                            )
-                            
-                            # Download results
-                            st.write("### 💾 Export Results")
-                            results_csv = bulk_df[display_cols].to_csv(index=False)
-                            st.download_button(
-                                "📥 Download Results CSV",
-                                data=results_csv,
-                                file_name="multinet_cohort_results.csv",
-                                mime="text/csv"
-                            )
-    else:
-        st.error("❌ Model files not loaded. Please ensure pkl files are in the correct directory.")
-
-# --- PAGE 3: INTERACTIVE DEMO ---
-elif app_mode == "🧪 Interactive Demo Walkthrough":
-    st.title("Interactive Demo Walkthrough")
+elif app_mode == "Single Prediction":
+    st.header("🎯 Clinical Sample Prediction")
+    st.info("Input sample values to generate a risk assessment and SHAP explanation.")
     
-    if diag:
-        st.markdown("""
-        ### Demo: Sample GBM Classification
-        
-        This demo shows example values for a hypothetical GBM-positive sample.
-        """)
-        
-        model = diag['model']
-        all_features = diag['features']
-        
-        # Get top 10 from model feature importances
-        feat_df = pd.DataFrame({
-            'feature': all_features, 
-            'importance': model.feature_importances_
-        }).sort_values(by='importance', ascending=False)
-        
-        top_10_features = feat_df.head(10).reset_index(drop=True)
-        
-        st.write("### Top 10 Biomarkers")
-        st.dataframe(
-            top_10_features.style.format({'importance': '{:.4f}'}),
-            use_container_width=True
-        )
-        
-        # Example GBM sample (high-risk values)
-        example_inputs = {
-            'AACS_prot': 1.5,
-            'BCHE_prot': -0.8,
-            'MIAT_rna': 15000.0,
-            'CFB_prot': -0.6,
-            'FGB_prot': -0.9,
-            'SYK_rna': 1200.0,
-            'HRG_prot': -1.0,
-            'ANLN_prot': 2.5,
-            'AATK_prot': 2.3,
-            'L-mimosine_met': 30.0
-        }
-        
-        st.write("### Example Input Values (GBM-positive sample)")
-        st.dataframe(pd.DataFrame(example_inputs.items(), columns=['Biomarker', 'Value']))
-        
-        if st.button("🔬 Run Demo Prediction"):
-            # Prepare input
-            full_input = pd.DataFrame({
-                f: [example_inputs.get(f, get_default_value(f))] 
-                for f in all_features
-            })
-            
-            # Predict
-            prob = model.predict_proba(full_input)[0][1]
-            
-            st.divider()
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("GBM Probability", f"{prob:.2%}")
-            with col2:
-                prediction = "GBM" if prob > 0.5 else "Normal"
-                st.metric("Classification", prediction)
-            
-            if prob > 0.5:
-                st.error("🔴 GBM Signature Detected")
-            else:
-                st.success("🟢 Normal Signature")
-    else:
-        st.error("❌ Demo requires model files to be loaded.")
+    # Create input fields for key features (Top 10 for brevity)
+    inputs = {}
+    cols = st.columns(4)
+    for i, feat in enumerate(feature_names[:12]):
+        with cols[i % 4]:
+            inputs[feat] = st.number_input(feat, value=0.0)
+    
+    # Fill remaining 843 features with 0 for the demo
+    full_input = {f: [inputs.get(f, 0.0)] for f in feature_names}
+    input_df = pd.DataFrame(full_input)
 
-# Footer
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-**MultiNet-AI v1.0**  
-Glioblastoma Diagnostic Platform  
-Multi-omics Machine Learning
-""")
+    if st.button("Generate Prediction & SHAP Report"):
+        pred = model.predict(input_df)[0]
+        proba = model.predict_proba(input_df)[0]
+        
+        # Display Results
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Risk Classification", "High" if pred == 1 else "Low")
+            st.metric("Confidence Score", f"{proba[1]:.2%}")
+        
+        # 🔥 SHAP Explanations
+        with col2:
+            st.subheader("Interpretable SHAP Summary")
+            explainer = shap.TreeExplainer(model)
+            shap_vals = explainer.shap_values(input_df)
+            
+            # Matplotlib to Streamlit
+            st.set_option('deprecation.showPyplotGlobalUse', False)
+            shap.force_plot(explainer.expected_value, shap_vals[0,:], input_df.iloc[0,:], matplotlib=True)
+            st.pyplot(bbox_inches='tight')
+
+        # 📄 Automated PDF Report
+        pdf_bytes = generate_pdf_report(pred, proba, shap_vals, feature_names)
+        st.download_button("Download Clinical PDF Report", data=pdf_bytes, file_name="clinical_report.pdf")
+
+elif app_mode == "Model Insights":
+    st.header("📈 Model Performance & Architecture")
+    st.write(f"The model is an **XGBClassifier** utilizing **{model.n_estimators} trees** with a **max depth of 4**[cite: 1, 2, 79].")
+    
+    # Global Feature Importance
+    importances = model.feature_importances_
+    feat_imp_df = pd.DataFrame({'Feature': feature_names, 'Importance': importances}).sort_values('Importance', ascending=False).head(20)
+    
+    fig_imp = px.bar(feat_imp_df, x='Importance', y='Feature', orientation='h', title="Top 20 Predictive Features")
+    st.plotly_chart(fig_imp, use_container_width=True)
