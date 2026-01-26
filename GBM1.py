@@ -80,6 +80,41 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- Asset Loading (Model & Feature Metadata) ---
+@st.cache_resource
+def load_assets():
+    try:
+        with open('gbm_clinical_model.pkl', 'rb') as f:
+            bundle = pickle.load(f)
+        
+        # Extract model from dictionary
+        model = bundle["model"]
+        feature_names = model.get_booster().feature_names
+        
+        # Calculate Global Feature Importance (Risk Probability Influence)
+        importances = model.feature_importances_
+        importance_df = pd.DataFrame({
+            'Biomarker': feature_names,
+            'Influence Score': importances
+        }).sort_values(by='Influence Score', ascending=False)
+        
+        # Calculate features for 95% cumulative importance
+        cumsum = importance_df['Influence Score'].cumsum()
+        features_95_pct = importance_df[cumsum <= 0.95]['Biomarker'].tolist()
+        # Ensure we have at least the features contributing to 95%
+        if len(features_95_pct) == 0:
+            features_95_pct = importance_df.head(160)['Biomarker'].tolist()
+        
+        return model, feature_names, importance_df, features_95_pct
+    except FileNotFoundError:
+        st.error("File 'gbm_clinical_model.pkl' not found. Please ensure it is in the root directory.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Initialization Error: {e}")
+        st.stop()
+
+model, feature_names, importance_df, features_95_pct = load_assets()
+
 # --- Generate Sample Demo Data ---
 @st.cache_data
 def generate_demo_data():
@@ -131,41 +166,6 @@ def generate_demo_data():
             patient[name] = 0.0
     
     return pd.DataFrame(demo_patients)
-
-# --- Asset Loading (Model & Feature Metadata) ---
-@st.cache_resource
-def load_assets():
-    try:
-        with open('gbm_clinical_model.pkl', 'rb') as f:
-            bundle = pickle.load(f)
-        
-        # Extract model from dictionary
-        model = bundle["model"]
-        feature_names = model.get_booster().feature_names
-        
-        # Calculate Global Feature Importance (Risk Probability Influence)
-        importances = model.feature_importances_
-        importance_df = pd.DataFrame({
-            'Biomarker': feature_names,
-            'Influence Score': importances
-        }).sort_values(by='Influence Score', ascending=False)
-        
-        # Calculate features for 95% cumulative importance
-        cumsum = importance_df['Influence Score'].cumsum()
-        features_95_pct = importance_df[cumsum <= 0.95]['Biomarker'].tolist()
-        # Ensure we have at least the features contributing to 95%
-        if len(features_95_pct) == 0:
-            features_95_pct = importance_df.head(160)['Biomarker'].tolist()
-        
-        return model, feature_names, importance_df, features_95_pct
-    except FileNotFoundError:
-        st.error("File 'gbm_clinical_model.pkl' not found. Please ensure it is in the root directory.")
-        st.stop()
-    except Exception as e:
-        st.error(f"Initialization Error: {e}")
-        st.stop()
-
-model, feature_names, importance_df, features_95_pct = load_assets()
 
 # --- Section: Processing Engine (Direct Raw Values) ---
 def process_data(df):
@@ -557,7 +557,7 @@ elif page == "Documentation":
         
         ### Model Outputs
         
-        #### Risk Score Interpretation
+        ####Risk Score Interpretation
         
         **Score Ranges**
         1. 0.0-0.3: Very low risk, minimal intervention
@@ -760,14 +760,22 @@ elif page == "User Analysis":
         # Manual Entry Fields using features_95_pct
         user_inputs = {}
         
-        # Display in 3-column layout
-        num_per_col = len(features_95_pct) // 3 + 1
+        # Display in groups with expanders for better organization
+        st.write(f"### Top {min(30, len(features_95_pct))} Most Important Biomarkers")
         m_cols = st.columns(3)
-        
-        for i, name in enumerate(features_95_pct):
+        for i, name in enumerate(features_95_pct[:30]):
             col_idx = i % 3
             with m_cols[col_idx]:
                 user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
+        
+        # Put remaining 95% features in expander
+        if len(features_95_pct) > 30:
+            with st.expander(f"Additional High-Importance Markers ({len(features_95_pct) - 30} more)"):
+                adv_cols = st.columns(4)
+                for i, name in enumerate(features_95_pct[30:]):
+                    col_idx = i % 4
+                    with adv_cols[col_idx]:
+                        user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
         
         # Fill remaining features with 0
         for name in feature_names:
@@ -807,39 +815,6 @@ elif page == "User Analysis":
             render_dashboard(b_results, mode="bulk", key_prefix="blk")
 
 # ============================================================================
-# DEMO WALKTHROUGH PAGE - WITH PRE-LOADED SAMPLE DATA
-# ============================================================================
-elif page == "Demo Walkthrough":
-    st.header("Interactive Demo Workspace")
-    
-    st.markdown("""
-    <div class="demo-box">
-    <h3>Welcome to the Demo Workspace</h3>
-    <p>This is your practice environment with <strong>pre-loaded sample data</strong>. Get familiar with MultiNet_AI's 
-    functionality using dummy datasets before working with real patient data.</p>
-    <p><strong>What's included:</strong></p>
-    <ul>
-        <li>Sample Patient Dataset (3 pre-configured patients)</li>
-        <li>Realistic biomarker values</li>
-        <li>Full analysis workflow</li>
-        <li>Interactive visualizations</li>
-    </ul>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Generate demo data
-    demo_data = generate_demo_data()
-    
-    # Demo Mode Selector
-    st.divider()
-    demo_mode = st.radio(
-        "**Choose Demo Mode:**",
-        ["Try with Sample Patients", "Guided Tutorial", "Learn by Exploring"],
-        horizontal=True
-    )
-    
-    # [Demo modes code continues exactly as in your original...due to length I'm truncating here]
-   # ============================================================================
 # DEMO WALKTHROUGH PAGE - WITH PRE-LOADED SAMPLE DATA
 # ============================================================================
 elif page == "Demo Walkthrough":
@@ -923,6 +898,7 @@ elif page == "Demo Walkthrough":
             <h4>What You're Seeing:</h4>
             <ul>
                 <li><strong>Histogram:</strong> Distribution of risk scores across all 3 patients</li>
+                <li><strong>Bar Chart:</strong> Individual patient risk probabilities sorted by risk level</li>
                 <li><strong>Patient Selector:</strong> Choose individual patients to see detailed profiles</li>
                 <li><strong>Multi-Modal Radar:</strong> Shows protein/RNA/metabolite balance</li>
                 <li><strong>Top Markers:</strong> Patient-specific elevated biomarkers</li>
@@ -958,9 +934,10 @@ elif page == "Demo Walkthrough":
             
             st.info("""
             **What you see:**
-            - 3 rows = 3 sample patients
-            - Columns = Biomarker measurements
-            - Values = Simulated lab results
+            
+            1. 3 rows = 3 sample patients
+            2. Columns = Biomarker measurements
+            3. Values = Simulated lab results
             
             These are realistic values based on actual GBM patient data patterns.
             """)
@@ -992,10 +969,10 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            # Show histogram only
+            # Show risk charts
             render_risk_charts(st.session_state.demo_results, mode="bulk", key_prefix="tutorial")
             
-            st.info("This histogram shows how the 3 patients' risk scores are distributed. Notice the different risk categories")
+            st.info("These charts show how the 3 patients' risk scores are distributed. Notice the different risk categories and how patients rank relative to each other.")
             
             if st.button("Next: Individual Patient", key="tutorial_next_2"):
                 st.session_state.tutorial_step = 3
@@ -1038,10 +1015,10 @@ elif page == "Demo Walkthrough":
             <h3>Tutorial Complete</h3>
             <p>You've learned how to:</p>
             <ul>
-                <li>Work with sample patient data</li>
-                <li>Run risk analysis</li>
-                <li>View cohort results</li>
-                <li>Examine individual patients</li>
+                <li>1. Work with sample patient data</li>
+                <li>2. Run risk analysis</li>
+                <li>3. View cohort results</li>
+                <li>4. Examine individual patients</li>
             </ul>
             </div>
             """, unsafe_allow_html=True)
@@ -1083,25 +1060,26 @@ elif page == "Demo Walkthrough":
             
             with st.expander("Understanding Risk Scores"):
                 st.write("""
-                - **0-30%**: Very Low Risk
-                - **30-50%**: Low Risk  
-                - **50-70%**: Moderate-High Risk
-                - **70-100%**: Very High Risk
+                1. **0-30%**: Very Low Risk
+                2. **30-50%**: Low Risk  
+                3. **50-70%**: Moderate-High Risk
+                4. **70-100%**: Very High Risk
                 """)
             
             with st.expander("Biomarker Types"):
                 st.write("""
-                - **_prot**: Protein measurements
-                - **_rna**: RNA expression levels
-                - **_met**: Metabolite concentrations
+                1. **_prot**: Protein measurements
+                2. **_rna**: RNA expression levels
+                3. **_met**: Metabolite concentrations
                 """)
             
             with st.expander("Chart Types"):
                 st.write("""
-                - **Gauge**: Individual risk percentage
-                - **Histogram**: Cohort distribution
-                - **Radar**: Multi-modal balance
-                - **Bar Charts**: Biomarker levels
+                1. **Gauge**: Individual risk percentage
+                2. **Histogram**: Cohort distribution
+                3. **Bar Chart**: Individual patient risk scores sorted
+                4. **Radar**: Multi-modal balance
+                5. **Bar Charts**: Biomarker levels
                 """)
         
         with exploration_tab[2]:
@@ -1118,10 +1096,10 @@ elif page == "Demo Walkthrough":
             
             st.success("""
             **What Makes a Good Analysis:**
-            - Review both cohort and individual results
-            - Compare patient markers to global importance
-            - Note the multi-modal signature shape
-            - Look for biomarker clusters
+            1. Review both cohort and individual results
+            2. Compare patient markers to global importance
+            3. Note the multi-modal signature shape
+            4. Look for biomarker clusters
             """)
 
     # Add reset button at bottom of demo page
@@ -1132,5 +1110,3 @@ elif page == "Demo Walkthrough":
         for key in keys_to_clear:
             del st.session_state[key]
         st.rerun()
-
-
