@@ -1214,13 +1214,6 @@ elif page == "Documentation":
         3. Isolated analysis environments
         4. Secure HTTPS transmission
         
-        **HIPAA Considerations**
-        1. Suitable for de-identified research data
-        2. No PHI storage or transmission
-        3. Audit logging available
-        4. Compliant with de-identification standards
-        5. Business Associate Agreement available
-        
         **Best Practices**
         1. Remove patient names from CSV files
         2. Use study IDs instead of medical record numbers
