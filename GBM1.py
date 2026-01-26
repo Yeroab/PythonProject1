@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
-import joblib
 import io
 
 # Set page config
@@ -22,38 +21,29 @@ def get_default_value(feature_name):
 
 # Helper function to validate input ranges
 def validate_input(feature_name, value):
-    """Warn if input seems out of expected range"""
+    """Catch only obvious data entry errors (negative values for counts/concentrations)"""
     warnings = []
-    if feature_name.endswith('_prot'):
-        if value < -3 or value > 5:
-            warnings.append(f"⚠️ {feature_name}: {value:.2f} is outside typical protein range (-3 to 5)")
-    elif feature_name.endswith('_rna'):
-        if value < 0 or value > 50000:
-            warnings.append(f"⚠️ {feature_name}: {value:.2f} is outside typical RNA range (0 to 50,000)")
-    elif feature_name.endswith('_met'):
+    if feature_name.endswith('_rna') or feature_name.endswith('_met'):
         if value < 0:
-            warnings.append(f"⚠️ {feature_name}: {value:.2f} is negative (metabolites should be >= 0)")
+            warnings.append(f"⚠️ {feature_name}: {value:.2f} is negative (should be >= 0)")
     return warnings
 
 # Load model assets
 @st.cache_resource
 def load_assets():
-    """Load the diagnostic model and biomarkers"""
+    """Load the diagnostic model"""
     try:
         # Load the diagnostic model (use detector or diagnostic_model-1)
         with open('gbm_detector.pkl', 'rb') as f:
             diag = pickle.load(f)
         
-        # Load biomarkers information
-        biomarkers = joblib.load('gbm_biomarkers__2_.pkl')
-        
-        return diag, biomarkers
+        return diag
     except Exception as e:
         st.error(f"Error loading model files: {e}")
-        return None, None
+        return None
 
 # Load assets at startup
-diag, biomarkers = load_assets()
+diag = load_assets()
 
 # Sidebar Navigation
 st.sidebar.title("💎 MultiNet-AI")
@@ -202,15 +192,18 @@ elif app_mode == "🩺 Input your own omics data":
                     st.markdown("""
                     **Protein features (_prot):**  
                     - Format: Log2-transformed abundance
-                    - Range: -3 to 5 (typically -1 to 2)
+                    - Based on your training data
                     
                     **RNA features (_rna):**  
                     - Format: Raw or normalized counts
-                    - Range: 0 to 50,000 (typically 500 to 15,000)
+                    - Must be >= 0 (counts cannot be negative)
                     
                     **Metabolite features (_met):**  
                     - Format: Concentration/intensity
-                    - Range: Varies (typically 5 to 100)
+                    - Must be >= 0 (concentrations cannot be negative)
+                    
+                    Note: The model will accept any values, but negative RNA counts or 
+                    metabolite concentrations are physically impossible and indicate a data error.
                     """)
                 
                 # Create input fields
