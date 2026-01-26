@@ -95,24 +95,22 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     # 1. Prediction Visuals
     render_risk_charts(results, mode=mode, key_prefix=key_prefix)
     
-    # 2. Global Risk Influence (Probability List of Biomarkers)
+    # 2. Individual Patient Explorer
     st.divider()
-    st.subheader("🧬 Global Biomarker Influence")
-    st.write("Top markers driving the risk probability across the model.")
-    fig_imp = px.bar(importance_df.head(15), x='Influence Score', y='Biomarker', 
-                     orientation='h', color='Influence Score', color_continuous_scale='Reds')
-    fig_imp.update_layout(yaxis={'categoryorder':'total ascending'})
-    st.plotly_chart(fig_imp, use_container_width=True, key=f"{key_prefix}_imp")
-
-    with st.expander("📄 View Searchable Influence List (All 843 Markers)"):
-        st.dataframe(importance_df, use_container_width=True, hide_index=True)
-
-    # 3. Individual Patient Explorer
-    st.divider()
-    st.subheader("🔍 Individual Patient Deep-Dive")
+    st.subheader("🔍 Individual Patient Analysis")
     selected_idx = st.selectbox("Select Patient Record", results.index, key=f"{key_prefix}_select")
     patient_row = results.iloc[selected_idx]
     
+    # Display patient risk info
+    col_info1, col_info2 = st.columns(2)
+    with col_info1:
+        st.metric("Prediction", patient_row["Prediction"])
+    with col_info2:
+        st.metric("Risk Score", f"{patient_row['Risk Score']:.2%}")
+    
+    st.divider()
+    
+    # Patient-specific visualizations
     col_l, col_r = st.columns([1, 2])
     with col_l:
         st.write("### Multi-Modal Signature")
@@ -124,15 +122,62 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         fig_radar = go.Figure(data=go.Scatterpolar(
             r=[prot_avg, rna_avg, met_avg],
             theta=['Proteins', 'RNA', 'Metabolites'], fill='toself'))
-        st.plotly_chart(fig_radar, use_container_width=True, key=f"{key_prefix}_radar")
+        st.plotly_chart(fig_radar, use_container_width=True, key=f"{key_prefix}_radar_{selected_idx}")
 
     with col_r:
-        st.write(f"### Top 20 Raw Marker Levels (Patient {selected_idx})")
+        st.write(f"### Top 20 Marker Levels (Patient {selected_idx})")
         markers = patient_row.drop(['Prediction', 'Risk Score'])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
                          color=top_20.values, color_continuous_scale='Viridis')
-        st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar")
+        st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar_{selected_idx}")
+    
+    # 3. Patient-Specific Biomarker Influence
+    st.divider()
+    st.subheader(f"🧬 Biomarker Levels for Patient {selected_idx}")
+    st.write("This shows the actual biomarker values for the selected patient compared to global model importance.")
+    
+    # Get patient's top markers by value
+    patient_markers = patient_row.drop(['Prediction', 'Risk Score']).astype(float)
+    patient_top_markers = patient_markers.sort_values(ascending=False).head(15)
+    
+    # Create comparison dataframe
+    patient_importance = importance_df[importance_df['Biomarker'].isin(patient_top_markers.index)].copy()
+    patient_importance = patient_importance.merge(
+        pd.DataFrame({'Biomarker': patient_top_markers.index, 'Patient Value': patient_top_markers.values}),
+        on='Biomarker'
+    )
+    
+    col_imp1, col_imp2 = st.columns(2)
+    with col_imp1:
+        st.write("#### Patient's Top 15 Expressed Markers")
+        fig_patient_markers = px.bar(
+            patient_importance.sort_values('Patient Value', ascending=False),
+            x='Patient Value', y='Biomarker', 
+            orientation='h', color='Patient Value', 
+            color_continuous_scale='Viridis',
+            title=f"Highest Biomarker Values - Patient {selected_idx}"
+        )
+        fig_patient_markers.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_patient_markers, use_container_width=True, key=f"{key_prefix}_patient_top_{selected_idx}")
+    
+    with col_imp2:
+        st.write("#### Global Model Importance (Top 15)")
+        fig_global_imp = px.bar(
+            importance_df.head(15), 
+            x='Influence Score', y='Biomarker', 
+            orientation='h', color='Influence Score', 
+            color_continuous_scale='Reds',
+            title="Most Influential Markers Globally"
+        )
+        fig_global_imp.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_global_imp, use_container_width=True, key=f"{key_prefix}_global_imp_{selected_idx}")
+
+    with st.expander("📄 View All Biomarker Values for This Patient"):
+        patient_all_markers = patient_row.drop(['Prediction', 'Risk Score']).to_frame(name='Value')
+        patient_all_markers['Biomarker'] = patient_all_markers.index
+        patient_all_markers = patient_all_markers[['Biomarker', 'Value']].sort_values('Value', ascending=False)
+        st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("🧬 MultiNet_AI")
@@ -166,13 +211,17 @@ if page == "🏠 Home":
 elif page == "📚 Documentation":
     st.header("📚 System Documentation")
     
-    doc_section = st.sidebar.selectbox(
-        "Documentation Section:",
-        ["Overview", "Frontend Architecture", "Backend Architecture", "Data Requirements", "Model Information"]
-    )
+    # Create tabs for documentation sections
+    doc_tabs = st.tabs([
+        "📋 Overview",
+        "🎨 Frontend Architecture",
+        "⚙️ Backend Architecture",
+        "📊 Data Requirements",
+        "🤖 Model Information"
+    ])
     
-    if doc_section == "Overview":
-        st.subheader("System Overview")
+    # Overview Tab
+    with doc_tabs[0]:
         st.markdown("""
         ### Purpose & Scope
         
@@ -198,8 +247,8 @@ elif page == "📚 Documentation":
         - **Biomarker Discovery**: Explore feature importance across the global model
         """)
     
-    elif doc_section == "Frontend Architecture":
-        st.subheader("Frontend Architecture")
+    # Frontend Architecture Tab
+    with doc_tabs[1]:
         st.markdown("""
         ### Technology Stack
         
@@ -212,6 +261,7 @@ elif page == "📚 Documentation":
         
         #### 1. Navigation System
         - **Sidebar Navigation**: Four primary sections (Home, Documentation, User Analysis, Demo)
+        - **Tab-based Sub-navigation**: Organized content within each section
         - **Persistent State**: Unique keys prevent widget conflicts across pages
         - **Responsive Layout**: Columns adapt to screen size using `use_container_width`
         
@@ -237,9 +287,9 @@ elif page == "📚 Documentation":
         
         **Biomarker Analysis**:
         - **Global Influence Bar Chart**: Top 15 features by model importance
-        - **Searchable DataTable**: Full 843-marker influence scores
-        - **Patient Deep-Dive**: Top 20 marker levels for selected individual
+        - **Patient-Specific Charts**: Top 20 marker levels for selected individual
         - **Multi-Modal Radar Chart**: Average expression across omics layers
+        - **Comparative Views**: Patient values vs global importance
         
         #### 4. Interactivity Features
         
@@ -256,8 +306,8 @@ elif page == "📚 Documentation":
         - **Accessibility**: High-contrast colors, large fonts, clear labels
         """)
     
-    elif doc_section == "Backend Architecture":
-        st.subheader("Backend Architecture")
+    # Backend Architecture Tab
+    with doc_tabs[2]:
         st.markdown("""
         ### Core Processing Pipeline
         
@@ -304,8 +354,8 @@ elif page == "📚 Documentation":
         - Plotly figure generation with unique keys per context
         
         **Dashboard Assembly (`render_dashboard`)**:
-        - Modular function orchestrating three visualization blocks
-        - Sequential rendering: predictions → global influence → patient explorer
+        - Modular function orchestrating visualization blocks
+        - Patient-specific rendering with unique keys
         - State management through key prefixes prevents widget collisions
         
         ### Machine Learning Model
@@ -355,8 +405,8 @@ elif page == "📚 Documentation":
         - **Processing Time**: ~1-5 seconds for batch inference (100 patients)
         """)
     
-    elif doc_section == "Data Requirements":
-        st.subheader("Data Requirements & Formats")
+    # Data Requirements Tab
+    with doc_tabs[3]:
         st.markdown("""
         ### Input Data Specifications
         
@@ -418,8 +468,8 @@ elif page == "📚 Documentation":
         - **HIPAA Considerations**: Suitable for de-identified research data
         """)
     
-    elif doc_section == "Model Information":
-        st.subheader("Model Information & Performance")
+    # Model Information Tab
+    with doc_tabs[4]:
         st.markdown("""
         ### Training Dataset
         
@@ -499,9 +549,6 @@ elif page == "📚 Documentation":
         3. **Monitoring**: Track model performance on real-world patients
         4. **Updating**: Periodically retrain with new data to maintain accuracy
         """)
-    
-    st.markdown("---")
-    st.info("💡 **Tip**: For hands-on learning, visit the **Demo Walkthrough** page after reviewing documentation.")
 
 # ============================================================================
 # USER ANALYSIS PAGE
@@ -509,12 +556,11 @@ elif page == "📚 Documentation":
 elif page == "🔬 User Analysis":
     st.header("🔬 User Analysis")
     
-    analysis_mode = st.sidebar.radio(
-        "Analysis Mode:",
-        ["✍️ Manual Patient Entry", "💾 Bulk Data Upload"]
-    )
+    # Create tabs for analysis modes
+    analysis_tabs = st.tabs(["✍️ Manual Patient Entry", "💾 Bulk Data Upload"])
     
-    if analysis_mode == "✍️ Manual Patient Entry":
+    # Manual Entry Tab
+    with analysis_tabs[0]:
         st.subheader("✍️ Manual Patient Entry")
         st.info("Input raw laboratory values. Markers left at 0.0 will be treated as baseline.")
         
@@ -536,7 +582,8 @@ elif page == "🔬 User Analysis":
             m_results = process_data(pd.DataFrame([user_inputs]))
             render_dashboard(m_results, mode="manual", key_prefix="man")
     
-    else:  # Bulk Data Upload
+    # Bulk Upload Tab
+    with analysis_tabs[1]:
         st.subheader("💾 Bulk Data Processing")
         
         # Template Generation & Download
@@ -569,18 +616,17 @@ elif page == "🔬 User Analysis":
 elif page == "🎬 Demo Walkthrough":
     st.header("🎬 Demo Walkthrough")
     
-    demo_step = st.sidebar.selectbox(
-        "Select Tutorial:",
-        [
-            "1. Single Patient Analysis",
-            "2. Interpreting Risk Scores",
-            "3. Bulk Data Processing",
-            "4. Biomarker Exploration",
-            "5. Exporting Results"
-        ]
-    )
+    # Create tabs for different tutorials
+    demo_tabs = st.tabs([
+        "1️⃣ Single Patient Analysis",
+        "2️⃣ Interpreting Risk Scores",
+        "3️⃣ Bulk Data Processing",
+        "4️⃣ Biomarker Exploration",
+        "5️⃣ Exporting Results"
+    ])
     
-    if demo_step == "1. Single Patient Analysis":
+    # Tutorial 1: Single Patient Analysis
+    with demo_tabs[0]:
         st.subheader("Tutorial: Single Patient Risk Assessment")
         
         st.markdown("""
@@ -592,7 +638,7 @@ elif page == "🎬 Demo Walkthrough":
         
         #### Step 1: Navigate to User Analysis
         - Click **"🔬 User Analysis"** in the sidebar
-        - Select **"✍️ Manual Patient Entry"** mode
+        - Select **"✍️ Manual Patient Entry"** tab
         
         #### Step 2: Enter Biomarker Values
         - You'll see 12 high-influence marker input fields
@@ -614,8 +660,9 @@ elif page == "🎬 Demo Walkthrough":
         
         #### Step 5: Review Results
         - **Gauge Chart**: Shows risk percentage and classification
-        - **Biomarker Influence**: See which markers drive model decisions
-        - **Patient Profile**: Radar chart displays multi-omics summary
+        - **Patient-Specific Plots**: View biomarker levels for this specific patient
+        - **Multi-Modal Signature**: Radar chart displays patient's omics profile
+        - **Comparative Analysis**: See patient's top markers vs global importance
         """)
         
         with st.expander("📋 Example Demo Data"):
@@ -629,7 +676,8 @@ PTEN_prot: 12.1
 VEGFA_rna: 195.6
             """)
     
-    elif demo_step == "2. Interpreting Risk Scores":
+    # Tutorial 2: Interpreting Risk Scores
+    with demo_tabs[1]:
         st.subheader("Tutorial: Understanding Risk Outputs")
         
         st.markdown("""
@@ -683,7 +731,8 @@ VEGFA_rna: 195.6
         - **Large Area**: High overall biomarker activity
         """)
     
-    elif demo_step == "3. Bulk Data Processing":
+    # Tutorial 3: Bulk Data Processing
+    with demo_tabs[2]:
         st.subheader("Tutorial: Batch Processing Patient Cohorts")
         
         st.markdown("""
@@ -694,7 +743,7 @@ VEGFA_rna: 195.6
         
         #### Step 1: Download Template
         - Navigate to **"🔬 User Analysis"** in sidebar
-        - Select **"💾 Bulk Data Upload"** mode
+        - Select **"💾 Bulk Data Upload"** tab
         - Click **"📥 Download CSV Template"** button
         - Save the file to your computer (named `MultiNet_Patient_Template.csv`)
         
@@ -714,7 +763,7 @@ VEGFA_rna: 195.6
 ```
         
         #### Step 3: Upload Filled Template
-        - Return to **"💾 Bulk Data Upload"** mode
+        - Return to **"💾 Bulk Data Upload"** tab
         - Click **"⬆️ Upload Patient Data"** file uploader
         - Select your completed CSV file
         
@@ -733,10 +782,11 @@ VEGFA_rna: 195.6
         - Probability distribution across all patients
         - Identifies clusters or bimodal patterns
         
-        **Patient Explorer**:
-        - Use dropdown to select individual records
-        - Review specific biomarker profiles
-        - Compare top markers across patients
+        **Individual Patient Explorer**:
+        - Use dropdown to select specific patient records
+        - Each patient gets their own visualizations
+        - Review patient-specific biomarker profiles
+        - Compare individual markers against global importance
         
         #### Step 6: Export Analysis
         - Results displayed in interactive tables
@@ -747,67 +797,55 @@ VEGFA_rna: 195.6
         with st.expander("📋 Sample Data Generator"):
             st.info("In a real application, you would download the template and fill it with actual patient data.")
     
-    elif demo_step == "4. Biomarker Exploration":
+    # Tutorial 4: Biomarker Exploration
+    with demo_tabs[3]:
         st.subheader("Tutorial: Discovering Key Biomarkers")
         
         st.markdown("""
         ### Understanding Feature Importance
         
-        #### Global Biomarker Influence Chart
+        #### Patient-Specific Biomarker Analysis
         
         **What It Shows**:
-        - Top 15 biomarkers ranked by contribution to risk predictions
-        - Horizontal bar chart sorted by influence score
-        - Red color gradient indicates relative importance
+        - Individual patient's actual biomarker values
+        - Top expressed markers for the selected patient
+        - Comparison with global model importance
+        - Patient's unique molecular signature
         
         **How to Interpret**:
-        1. **Highest Bar**: Most influential marker across all patients
-        2. **Score Magnitude**: Relative contribution to model decisions
-        3. **Biomarker Type**: Note suffixes (_prot, _rna, _met)
+        1. **Patient's Top Markers**: Shows which biomarkers are most elevated in this specific patient
+        2. **Global Importance**: Shows which markers the model considers most important overall
+        3. **Comparison**: Helps identify if patient's elevated markers align with globally important ones
         
         **Clinical Applications**:
-        - **Focused Testing**: Prioritize measuring high-influence markers
-        - **Pathway Analysis**: Group related proteins/genes for mechanistic insight
-        - **Drug Targets**: High-importance markers may be therapeutic candidates
+        - **Personalized Medicine**: Identify patient-specific therapeutic targets
+        - **Risk Drivers**: Understand which markers contribute to this patient's risk score
+        - **Treatment Selection**: Match elevated markers to available targeted therapies
         
-        #### Full 843-Marker Table
+        #### Multi-Modal Signature
         
-        **Accessing**:
-        - Expand **"📄 View Searchable Influence List"**
-        - Scrollable table with all features
-        
-        **Features**:
-        - **Search Box**: Filter by marker name (e.g., type "TP53" to find all related)
-        - **Sortable Columns**: Click headers to reorder
-        - **Copy Function**: Select and copy data for external analysis
+        **Patient-Specific Radar Chart**:
+        - Shows the patient's unique omics profile
+        - Triangular chart with three axes: Proteins, RNA, Metabolites
+        - Reveals which data types dominate in this patient
         
         **Use Cases**:
-        - Find influence score for specific marker of interest
-        - Compare related proteins (e.g., all kinases)
-        - Export for meta-analysis or publication
-        
-        #### Patient-Specific Deep Dive
-        
-        **Top 20 Marker Levels Chart**:
-        - Shows highest-expressed biomarkers for selected patient
-        - Horizontal bar chart with color gradient
-        - Helps identify dominant molecular signals
-        
-        **Multi-Modal Radar**:
-        - Triangular chart showing omics balance
-        - Three axes: Proteins, RNA, Metabolites
-        - Reveals which data types contribute most to patient profile
+        - Compare patients to identify molecular subtypes
+        - Track changes in omics balance over time
+        - Identify dominant biological processes
         
         #### Discovery Workflow
         
-        1. **Global Analysis**: Review top 15 influencers to understand model logic
-        2. **Literature Search**: Research identified markers in GBM context
-        3. **Patient Correlation**: Check if high-risk patients share marker patterns
-        4. **Hypothesis Generation**: Develop biological explanations for signatures
-        5. **Validation**: Design follow-up experiments for key findings
+        1. **Individual Analysis**: Review patient's top expressed markers
+        2. **Comparison**: Check against global importance rankings
+        3. **Pattern Recognition**: Look for unusual marker combinations
+        4. **Literature Search**: Research identified markers in GBM context
+        5. **Hypothesis Generation**: Develop personalized treatment strategies
+        6. **Validation**: Design follow-up experiments for key findings
         """)
     
-    elif demo_step == "5. Exporting Results":
+    # Tutorial 5: Exporting Results
+    with demo_tabs[4]:
         st.subheader("Tutorial: Saving & Sharing Analysis")
         
         st.markdown("""
@@ -816,7 +854,7 @@ VEGFA_rna: 195.6
         #### Method 1: Screenshot Visualizations
         
         **For Presentations**:
-        1. Display desired chart (gauge, pie, histogram, etc.)
+        1. Display desired chart (gauge, pie, histogram, patient-specific plots)
         2. Use OS screenshot tool:
            - **Windows**: Windows + Shift + S
            - **Mac**: Command + Shift + 4
@@ -843,15 +881,15 @@ VEGFA_rna: 195.6
         
         #### Method 3: Data Table Copy
         
-        **From Searchable Tables**:
+        **From Patient Data Views**:
         1. Navigate to expandable data views
         2. Select rows of interest
         3. Right-click → Copy or Ctrl+C / Cmd+C
         4. Paste into Excel, Google Sheets, or text editor
         
         **Use Cases**:
-        - Export feature importance scores
-        - Save patient risk scores
+        - Export patient-specific biomarker values
+        - Save risk scores for all patients
         - Create custom reports
         
         #### Method 4: Print to PDF
@@ -891,7 +929,7 @@ VEGFA_rna: 195.6
         - Maintain version control of input files
         
         **For Publications**:
-        - Export feature importance table
+        - Export patient-specific analyses
         - Save high-res chart images
         - Document model hyperparameters
         - Include data availability statement
