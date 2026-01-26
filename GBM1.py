@@ -10,6 +10,89 @@ from PIL import Image
 # --- Page Configuration ---
 st.set_page_config(page_title="MultiNet_AI", layout="wide", page_icon="🧬")
 
+# --- Custom CSS for Blue Theme ---
+st.markdown("""
+    <style>
+    /* Main background */
+    .stApp {
+        background-color: #0e1117;
+    }
+    
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #1a2332;
+    }
+    
+    /* Headers */
+    h1, h2, h3 {
+        color: #4a9eff !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background-color: #1a2332;
+        color: #ffffff;
+        border-radius: 4px 4px 0px 0px;
+        padding: 10px 20px;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #2563eb;
+        color: #ffffff;
+    }
+    
+    /* Buttons */
+    .stButton > button {
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 0.5rem 1rem;
+    }
+    
+    .stButton > button:hover {
+        background-color: #1d4ed8;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        color: #4a9eff;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #1a2332;
+        color: #4a9eff;
+        border-radius: 5px;
+    }
+    
+    /* Info boxes */
+    .stAlert {
+        background-color: #1e3a5f;
+        color: #ffffff;
+    }
+    
+    /* Download button */
+    .stDownloadButton > button {
+        background-color: #2563eb;
+        color: white;
+    }
+    
+    .stDownloadButton > button:hover {
+        background-color: #1d4ed8;
+    }
+    
+    /* Radio buttons */
+    [data-testid="stSidebar"] .stRadio > label {
+        color: #4a9eff;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- Asset Loading (Model & Feature Metadata) ---
 @st.cache_resource
 def load_assets():
@@ -76,19 +159,25 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
                 'steps': [
                     {'range': [0, 50], 'color': "lightgray"},
                     {'range': [50, 100], 'color': "gray"}]}))
+        fig_gauge.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={'color': 'white'}
+        )
         st.plotly_chart(fig_gauge, use_container_width=True, key=f"{key_prefix}_gauge")
     else:
-        # Pie & Histogram for Bulk Entry
-        c1, c2 = st.columns(2)
-        with c1:
-            fig_pie = px.pie(results, names='Prediction', title="Cohort Summary",
-                             color='Prediction', color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#636EFA"})
-            st.plotly_chart(fig_pie, use_container_width=True, key=f"{key_prefix}_pie")
-        with c2:
-            fig_hist = px.histogram(results, x="Risk Score", color="Prediction",
-                                     title="Risk Probability Distribution",
-                                     color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#636EFA"})
-            st.plotly_chart(fig_hist, use_container_width=True, key=f"{key_prefix}_hist")
+        # Histogram for Bulk Entry
+        fig_hist = px.histogram(results, x="Risk Score", color="Prediction",
+                                 title="Risk Probability Distribution",
+                                 color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#00CC96"})
+        fig_hist.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={'color': 'white'},
+            xaxis={'gridcolor': '#2a3f5f'},
+            yaxis={'gridcolor': '#2a3f5f'}
+        )
+        st.plotly_chart(fig_hist, use_container_width=True, key=f"{key_prefix}_hist")
 
 # --- Section: Complete Dashboard ---
 def render_dashboard(results, mode="manual", key_prefix=""):
@@ -121,7 +210,21 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         
         fig_radar = go.Figure(data=go.Scatterpolar(
             r=[prot_avg, rna_avg, met_avg],
-            theta=['Proteins', 'RNA', 'Metabolites'], fill='toself'))
+            theta=['Proteins', 'RNA', 'Metabolites'], 
+            fill='toself',
+            fillcolor='rgba(37, 99, 235, 0.3)',
+            line=dict(color='#2563eb', width=2)
+        ))
+        fig_radar.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            polar=dict(
+                bgcolor='rgba(0,0,0,0)',
+                radialaxis=dict(gridcolor='#2a3f5f', color='white'),
+                angularaxis=dict(gridcolor='#2a3f5f', color='white')
+            ),
+            font={'color': 'white'}
+        )
         st.plotly_chart(fig_radar, use_container_width=True, key=f"{key_prefix}_radar_{selected_idx}")
 
     with col_r:
@@ -129,7 +232,14 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         markers = patient_row.drop(['Prediction', 'Risk Score'])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
-                         color=top_20.values, color_continuous_scale='Viridis')
+                         color=top_20.values, color_continuous_scale='Blues')
+        fig_bar.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={'color': 'white'},
+            xaxis={'gridcolor': '#2a3f5f'},
+            yaxis={'gridcolor': '#2a3f5f'}
+        )
         st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar_{selected_idx}")
     
     # 3. Patient-Specific Biomarker Influence
@@ -155,10 +265,17 @@ def render_dashboard(results, mode="manual", key_prefix=""):
             patient_importance.sort_values('Patient Value', ascending=False),
             x='Patient Value', y='Biomarker', 
             orientation='h', color='Patient Value', 
-            color_continuous_scale='Viridis',
+            color_continuous_scale='Blues',
             title=f"Highest Biomarker Values - Patient {selected_idx}"
         )
-        fig_patient_markers.update_layout(yaxis={'categoryorder':'total ascending'})
+        fig_patient_markers.update_layout(
+            yaxis={'categoryorder':'total ascending'},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={'color': 'white'},
+            xaxis={'gridcolor': '#2a3f5f'},
+            yaxis={'gridcolor': '#2a3f5f'}
+        )
         st.plotly_chart(fig_patient_markers, use_container_width=True, key=f"{key_prefix}_patient_top_{selected_idx}")
     
     with col_imp2:
@@ -167,10 +284,17 @@ def render_dashboard(results, mode="manual", key_prefix=""):
             importance_df.head(15), 
             x='Influence Score', y='Biomarker', 
             orientation='h', color='Influence Score', 
-            color_continuous_scale='Reds',
+            color_continuous_scale='Blues',
             title="Most Influential Markers Globally"
         )
-        fig_global_imp.update_layout(yaxis={'categoryorder':'total ascending'})
+        fig_global_imp.update_layout(
+            yaxis={'categoryorder':'total ascending'},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font={'color': 'white'},
+            xaxis={'gridcolor': '#2a3f5f'},
+            yaxis={'gridcolor': '#2a3f5f'}
+        )
         st.plotly_chart(fig_global_imp, use_container_width=True, key=f"{key_prefix}_global_imp_{selected_idx}")
 
     with st.expander("📄 View All Biomarker Values for This Patient"):
@@ -282,7 +406,6 @@ elif page == "📚 Documentation":
         
         **Risk Assessment Visuals**:
         - **Gauge Chart** (Single Patient): Semi-circular gauge displaying risk percentage
-        - **Pie Chart** (Cohort): Distribution of high/low risk classifications
         - **Histogram** (Cohort): Probability density distribution across patients
         
         **Biomarker Analysis**:
@@ -296,7 +419,7 @@ elif page == "📚 Documentation":
         - **Patient Selection**: Dropdown to explore individual records in batch results
         - **Expandable Sections**: Collapsible panels for advanced options and full data views
         - **Download Buttons**: CSV template generation for standardized input
-        - **Color Coding**: Risk-aware palettes (red = high risk, green/blue = low risk)
+        - **Color Coding**: Risk-aware palettes (red = high risk, green = low risk)
         
         ### User Experience Design
         
@@ -304,6 +427,7 @@ elif page == "📚 Documentation":
         - **Visual Hierarchy**: Headers, dividers, and spacing guide attention flow
         - **Feedback Mechanisms**: Spinners during processing, error messages for failures
         - **Accessibility**: High-contrast colors, large fonts, clear labels
+        - **Blue Theme**: Professional medical interface with blue color scheme
         """)
     
     # Backend Architecture Tab
@@ -349,7 +473,7 @@ elif page == "📚 Documentation":
         #### 3. Visualization Rendering
         
         **Risk Charts (`render_risk_charts`)**:
-        - Mode-aware rendering (single gauge vs. cohort charts)
+        - Mode-aware rendering (single gauge vs. histogram)
         - Dynamic color assignment based on risk category
         - Plotly figure generation with unique keys per context
         
@@ -774,13 +898,10 @@ VEGFA_rna: 195.6
         
         #### Step 5: Review Cohort Results
         
-        **Pie Chart**:
-        - Shows distribution: X% high risk, Y% low risk
-        - Helps understand overall cohort characteristics
-        
         **Histogram**:
         - Probability distribution across all patients
         - Identifies clusters or bimodal patterns
+        - Color-coded by risk category
         
         **Individual Patient Explorer**:
         - Use dropdown to select specific patient records
@@ -854,7 +975,7 @@ VEGFA_rna: 195.6
         #### Method 1: Screenshot Visualizations
         
         **For Presentations**:
-        1. Display desired chart (gauge, pie, histogram, patient-specific plots)
+        1. Display desired chart (gauge, histogram, patient-specific plots)
         2. Use OS screenshot tool:
            - **Windows**: Windows + Shift + S
            - **Mac**: Command + Shift + 4
