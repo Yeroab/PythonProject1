@@ -13,36 +13,18 @@ st.set_page_config(page_title="MultiNet_AI", layout="wide", page_icon="🧬")
 # --- Custom CSS for Blue Theme ---
 st.markdown("""
     <style>
-    /* Main background */
-    .stApp {
-        background-color: #0e1117;
-    }
-    
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background-color: #1a2332;
+        background-color: #1e3a8a;
     }
     
-    /* Headers */
-    h1, h2, h3 {
-        color: #4a9eff !important;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background-color: #1a2332;
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
         color: #ffffff;
-        border-radius: 4px 4px 0px 0px;
-        padding: 10px 20px;
     }
     
-    .stTabs [aria-selected="true"] {
-        background-color: #2563eb;
-        color: #ffffff;
+    /* Header/Title styling */
+    header[data-testid="stHeader"] {
+        background-color: #1e40af;
     }
     
     /* Buttons */
@@ -58,41 +40,24 @@ st.markdown("""
         background-color: #1d4ed8;
     }
     
-    /* Metrics */
-    [data-testid="stMetricValue"] {
-        color: #4a9eff;
-    }
-    
-    /* Expander */
-    .streamlit-expanderHeader {
-        background-color: #1a2332;
-        color: #4a9eff;
-        border-radius: 5px;
-    }
-    
-    /* Info boxes */
-    .stAlert {
-        background-color: #1e3a5f;
-        color: #ffffff;
-    }
-    
     /* Download button */
     .stDownloadButton > button {
         background-color: #2563eb;
         color: white;
+        border: none;
+        border-radius: 5px;
     }
     
     .stDownloadButton > button:hover {
         background-color: #1d4ed8;
     }
     
-    /* Radio buttons */
+    /* Radio buttons in sidebar */
     [data-testid="stSidebar"] .stRadio > label {
-        color: #4a9eff;
+        color: #ffffff;
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 # --- Asset Loading (Model & Feature Metadata) ---
 @st.cache_resource
@@ -160,24 +125,12 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
                 'steps': [
                     {'range': [0, 50], 'color': "lightgray"},
                     {'range': [50, 100], 'color': "gray"}]}))
-        fig_gauge.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font={'color': 'white'}
-        )
         st.plotly_chart(fig_gauge, use_container_width=True, key=f"{key_prefix}_gauge")
     else:
         # Histogram for Bulk Entry
         fig_hist = px.histogram(results, x="Risk Score", color="Prediction",
                                  title="Risk Probability Distribution",
                                  color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#00CC96"})
-        fig_hist.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font={'color': 'white'},
-            xaxis={'gridcolor': '#2a3f5f'},
-            yaxis={'gridcolor': '#2a3f5f'}
-        )
         st.plotly_chart(fig_hist, use_container_width=True, key=f"{key_prefix}_hist")
 
 # --- Section: Complete Dashboard ---
@@ -212,20 +165,8 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         fig_radar = go.Figure(data=go.Scatterpolar(
             r=[prot_avg, rna_avg, met_avg],
             theta=['Proteins', 'RNA', 'Metabolites'], 
-            fill='toself',
-            fillcolor='rgba(37, 99, 235, 0.3)',
-            line=dict(color='#2563eb', width=2)
+            fill='toself'
         ))
-        fig_radar.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            polar=dict(
-                bgcolor='rgba(0,0,0,0)',
-                radialaxis=dict(gridcolor='#2a3f5f', color='white'),
-                angularaxis=dict(gridcolor='#2a3f5f', color='white')
-            ),
-            font={'color': 'white'}
-        )
         st.plotly_chart(fig_radar, use_container_width=True, key=f"{key_prefix}_radar_{selected_idx}")
 
     with col_r:
@@ -233,14 +174,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         markers = patient_row.drop(['Prediction', 'Risk Score'])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
-                         color=top_20.values, color_continuous_scale='Blues')
-        fig_bar.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font={'color': 'white'},
-            xaxis={'gridcolor': '#2a3f5f'},
-            yaxis={'gridcolor': '#2a3f5f'}
-        )
+                         color=top_20.values, color_continuous_scale='Viridis')
         st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar_{selected_idx}")
     
     # 3. Patient-Specific Biomarker Influence
@@ -266,17 +200,10 @@ def render_dashboard(results, mode="manual", key_prefix=""):
             patient_importance.sort_values('Patient Value', ascending=False),
             x='Patient Value', y='Biomarker', 
             orientation='h', color='Patient Value', 
-            color_continuous_scale='Blues',
+            color_continuous_scale='Viridis',
             title=f"Highest Biomarker Values - Patient {selected_idx}"
         )
-        fig_patient_markers.update_layout(
-            yaxis={'categoryorder':'total ascending'},
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font={'color': 'white'},
-            xaxis={'gridcolor': '#2a3f5f'},
-            yaxis={'gridcolor': '#2a3f5f'}
-        )
+        fig_patient_markers.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_patient_markers, use_container_width=True, key=f"{key_prefix}_patient_top_{selected_idx}")
     
     with col_imp2:
@@ -285,17 +212,10 @@ def render_dashboard(results, mode="manual", key_prefix=""):
             importance_df.head(15), 
             x='Influence Score', y='Biomarker', 
             orientation='h', color='Influence Score', 
-            color_continuous_scale='Blues',
+            color_continuous_scale='Reds',
             title="Most Influential Markers Globally"
         )
-        fig_global_imp.update_layout(
-            yaxis={'categoryorder':'total ascending'},
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font={'color': 'white'},
-            xaxis={'gridcolor': '#2a3f5f'},
-            yaxis={'gridcolor': '#2a3f5f'}
-        )
+        fig_global_imp.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_global_imp, use_container_width=True, key=f"{key_prefix}_global_imp_{selected_idx}")
 
     with st.expander("📄 View All Biomarker Values for This Patient"):
@@ -428,7 +348,6 @@ elif page == "📚 Documentation":
         - **Visual Hierarchy**: Headers, dividers, and spacing guide attention flow
         - **Feedback Mechanisms**: Spinners during processing, error messages for failures
         - **Accessibility**: High-contrast colors, large fonts, clear labels
-        - **Blue Theme**: Professional medical interface with blue color scheme
         """)
     
     # Backend Architecture Tab
