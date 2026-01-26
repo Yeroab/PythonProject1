@@ -69,6 +69,16 @@ def generate_profile(features, cancer_type, patient_id):
             'high': {'ERBB2_prot': (8, 10), 'ESR1_prot': (7, 9)},
             'low': {'BRCA1_prot': (2, 3)}
         },
+        'Colorectal Cancer': {
+            'mean': 5.0, 'std': 2.3,
+            'high': {'KRAS_prot': (8, 10), 'APC_prot': (7, 9)},
+            'low': {'TP53_prot': (2, 3)}
+        },
+        'Prostate Cancer': {
+            'mean': 4.9, 'std': 2.1,
+            'high': {'AR_prot': (8, 10), 'MYC_prot': (7, 9)},
+            'low': {'TP53_prot': (2, 3)}
+        },
         'Normal': {
             'mean': 4.0, 'std': 1.5,
             'high': {}, 'low': {}
@@ -144,6 +154,23 @@ def biomarker_chart(df):
     )
     return fig
 
+# Confidence chart
+def confidence_chart(probs):
+    fig = go.Figure(go.Bar(
+        x=['Normal', 'Cancer'],
+        y=[p * 100 for p in probs],
+        marker=dict(color=['#10b981', '#ef4444']),
+        text=[f'{p*100:.1f}%' for p in probs],
+        textposition='outside'
+    ))
+    fig.update_layout(
+        title='Classification Confidence',
+        yaxis_title='Probability (%)',
+        height=300,
+        yaxis=dict(range=[0, 105])
+    )
+    return fig
+
 # Main app
 def main():
     st.markdown("<h1 style='text-align: center;'>🧬 GBM ML Diagnostic Platform</h1>", unsafe_allow_html=True)
@@ -164,7 +191,8 @@ def main():
         
         cancer_type = st.selectbox(
             "Cancer Type",
-            ['GBM (Glioblastoma)', 'Lung Cancer', 'Breast Cancer', 'Normal']
+            ['GBM (Glioblastoma)', 'Lung Cancer', 'Breast Cancer', 
+             'Colorectal Cancer', 'Prostate Cancer', 'Normal']
         )
         
         run_btn = st.button("🚀 RUN ML PREDICTION", use_container_width=True, type="primary")
@@ -225,13 +253,17 @@ def main():
             st.plotly_chart(gauge_chart(prob, pred), use_container_width=True)
         
         with col2:
-            st.plotly_chart(biomarker_chart(models['biomarkers']['top_targets_df']), use_container_width=True)
+            st.plotly_chart(confidence_chart(result['probs']), use_container_width=True)
         
-        # Data preview
+        # Biomarkers
+        st.markdown("### 🎯 Top Biomarkers")
+        st.plotly_chart(biomarker_chart(models['biomarkers']['top_targets_df']), use_container_width=True)
+        
+        # Data preview - FIXED: Removed .style.background_gradient()
         with st.expander("🔍 View Data (First 20 Features)"):
             display = data.T.head(20)
             display.columns = ['Expression']
-            st.dataframe(display.style.background_gradient(cmap='viridis'))
+            st.dataframe(display, use_container_width=True)
     
     else:
         st.info("👆 Select cancer type and click **RUN ML PREDICTION** to start")
