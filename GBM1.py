@@ -753,38 +753,50 @@ elif page == "User Analysis":
     analysis_tabs = st.tabs(["Manual Patient Entry", "Bulk Data Upload"])
     
     # Manual Entry Tab - Using top 95% features
-    with analysis_tabs[0]:
-        st.subheader("Manual Patient Entry")
-        st.info(f"Input raw laboratory values for the {len(features_95_pct)} most important biomarkers (95% predictive power). Markers left at 0.0 will be treated as baseline.")
-        
-        # Manual Entry Fields using features_95_pct
-        user_inputs = {}
-        
-        # Display in groups with expanders for better organization
-        st.write(f"### Top {min(30, len(features_95_pct))} Most Important Biomarkers")
-        m_cols = st.columns(3)
-        for i, name in enumerate(features_95_pct[:30]):
-            col_idx = i % 3
-            with m_cols[col_idx]:
-                user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
-        
-        # Put remaining 95% features in expander
-        if len(features_95_pct) > 30:
-            with st.expander(f"Additional High-Importance Markers ({len(features_95_pct) - 30} more)"):
-                adv_cols = st.columns(4)
-                for i, name in enumerate(features_95_pct[30:]):
-                    col_idx = i % 4
-                    with adv_cols[col_idx]:
-                        user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
-        
-        # Fill remaining features with 0
-        for name in feature_names:
-            if name not in user_inputs:
-                user_inputs[name] = 0.0
+# Manual Entry Tab - Using top 95% features
+with analysis_tabs[0]:
+    st.subheader("Manual Patient Entry")
+    st.info(f"Input raw laboratory values for the {len(features_95_pct)} most important biomarkers (95% predictive power). Markers left at 0.0 will be treated as baseline.")
+    
+    # Manual Entry Fields using features_95_pct
+    user_inputs = {}
+    
+    # Display top 30 in main view with proper iteration
+    st.write(f"### Top 30 Most Important Biomarkers")
+    
+    # Create rows of 3 columns each
+    num_to_show_main = min(30, len(features_95_pct))
+    for row_start in range(0, num_to_show_main, 3):
+        cols = st.columns(3)
+        for col_idx in range(3):
+            feature_idx = row_start + col_idx
+            if feature_idx < num_to_show_main:
+                name = features_95_pct[feature_idx]
+                with cols[col_idx]:
+                    user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
+    
+    # Put remaining 95% features in expander
+    if len(features_95_pct) > 30:
+        with st.expander(f"Additional High-Importance Markers ({len(features_95_pct) - 30} more)"):
+            # Create rows of 4 columns each for remaining features
+            remaining_features = features_95_pct[30:]
+            for row_start in range(0, len(remaining_features), 4):
+                cols = st.columns(4)
+                for col_idx in range(4):
+                    feature_idx = row_start + col_idx
+                    if feature_idx < len(remaining_features):
+                        name = remaining_features[feature_idx]
+                        with cols[col_idx]:
+                            user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
+    
+    # Fill remaining features with 0
+    for name in feature_names:
+        if name not in user_inputs:
+            user_inputs[name] = 0.0
 
-        if st.button("Analyze Single Patient", key="btn_manual"):
-            m_results = process_data(pd.DataFrame([user_inputs]))
-            render_dashboard(m_results, mode="manual", key_prefix="man")
+    if st.button("Analyze Single Patient", key="btn_manual"):
+        m_results = process_data(pd.DataFrame([user_inputs]))
+        render_dashboard(m_results, mode="manual", key_prefix="man")
     
     # Bulk Upload Tab
     with analysis_tabs[1]:
