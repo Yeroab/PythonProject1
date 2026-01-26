@@ -233,116 +233,117 @@ elif app_mode == "🩺 Input your own omics data":
                     )
                 
                 submit = st.form_submit_button("🔬 RUN DIAGNOSTIC CONSENSUS", type="primary")
+            
+            # Results display (OUTSIDE the form)
+            if submit:
+                # Validate inputs
+                all_warnings = []
+                for feat, value in user_inputs.items():
+                    warnings = validate_input(feat, value)
+                    all_warnings.extend(warnings)
                 
-                if submit:
-                    # Validate inputs
-                    all_warnings = []
-                    for feat, value in user_inputs.items():
-                        warnings = validate_input(feat, value)
-                        all_warnings.extend(warnings)
-                    
-                    if all_warnings:
-                        st.warning("⚠️ Input Validation Warnings:")
-                        for warning in all_warnings:
-                            st.write(warning)
-                    
-                    # 1. Prepare full feature vector (843 features: 354 proteins, 423 RNAs, 66 metabolites)
-                    # Use type-specific defaults for features not manually entered
-                    full_input = pd.DataFrame({
-                        f: [user_inputs.get(f, get_default_value(f))] 
-                        for f in all_features
-                    })
-                    
-                    # 2. Generate Prediction
-                    prob = model.predict_proba(full_input)[0][1]
-                    prediction = "GBM" if prob > 0.5 else "Normal"
-                    
-                    # 3. Display Metrics
-                    st.divider()
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Probability of GBM", f"{prob:.2%}")
-                    with col2:
-                        st.metric("Classification", prediction)
-                    with col3:
-                        confidence = abs(prob - 0.5) * 200  # Convert to 0-100%
-                        st.metric("Confidence", f"{confidence:.1f}%")
-                    
-                    if prob > 0.5: 
-                        st.error("🔴 CONSENSUS: POSITIVE GBM SIGNATURE DETECTED")
-                    else: 
-                        st.success("🟢 CONSENSUS: NEGATIVE (NORMAL) SIGNATURE")
+                if all_warnings:
+                    st.warning("⚠️ Input Validation Warnings:")
+                    for warning in all_warnings:
+                        st.write(warning)
+                
+                # 1. Prepare full feature vector (843 features: 354 proteins, 423 RNAs, 66 metabolites)
+                # Use type-specific defaults for features not manually entered
+                full_input = pd.DataFrame({
+                    f: [user_inputs.get(f, get_default_value(f))] 
+                    for f in all_features
+                })
+                
+                # 2. Generate Prediction
+                prob = model.predict_proba(full_input)[0][1]
+                prediction = "GBM" if prob > 0.5 else "Normal"
+                
+                # 3. Display Metrics
+                st.divider()
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Probability of GBM", f"{prob:.2%}")
+                with col2:
+                    st.metric("Classification", prediction)
+                with col3:
+                    confidence = abs(prob - 0.5) * 200  # Convert to 0-100%
+                    st.metric("Confidence", f"{confidence:.1f}%")
+                
+                if prob > 0.5: 
+                    st.error("🔴 CONSENSUS: POSITIVE GBM SIGNATURE DETECTED")
+                else: 
+                    st.success("🟢 CONSENSUS: NEGATIVE (NORMAL) SIGNATURE")
 
-                    # 4. Input Summary
-                    st.divider()
-                    st.write("### 📊 Input Summary")
-                    summary_cols = st.columns(3)
-                    with summary_cols[0]:
-                        st.metric("Manual Entries", len(user_inputs))
-                    with summary_cols[1]:
-                        st.metric("Default Values", len(all_features) - len(user_inputs))
-                    with summary_cols[2]:
-                        st.metric("Total Features", len(all_features))
-                    
-                    # 5. Feature Impact Visualization
-                    st.write("### 📈 Local Feature Impact Analysis")
-                    st.caption("Shows the weighted contribution of each biomarker to the diagnostic decision.")
-                    
-                    # Calculate: Input Value × Global Model Importance
-                    impact_list = []
-                    for feat in top_10:
-                        weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
-                        impact_list.append({
-                            "Biomarker": feat, 
-                            "Input Value": user_inputs[feat],
-                            "Importance": weight,
-                            "Diagnostic Impact": user_inputs[feat] * weight
-                        })
-                    
-                    # Display impact chart
-                    plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
-                    st.bar_chart(plot_df[['Diagnostic Impact']], color="#1f77b4")
-                    
-                    # Display detailed table
-                    with st.expander("📋 Detailed Impact Values"):
-                        st.dataframe(
-                            pd.DataFrame(impact_list).style.format({
-                                'Input Value': '{:.4f}',
-                                'Importance': '{:.4f}',
-                                'Diagnostic Impact': '{:.4f}'
-                            }),
-                            use_container_width=True
-                        )
-                    
-                    # 6. Download Results
-                    st.divider()
-                    st.write("### 💾 Export Results")
-                    
-                    # Create results dataframe
-                    results_df = pd.DataFrame({
-                        'Metric': ['Prediction', 'Probability', 'Confidence'],
-                        'Value': [prediction, f"{prob:.4f}", f"{confidence:.1f}%"]
+                # 4. Input Summary
+                st.divider()
+                st.write("### 📊 Input Summary")
+                summary_cols = st.columns(3)
+                with summary_cols[0]:
+                    st.metric("Manual Entries", len(user_inputs))
+                with summary_cols[1]:
+                    st.metric("Default Values", len(all_features) - len(user_inputs))
+                with summary_cols[2]:
+                    st.metric("Total Features", len(all_features))
+                
+                # 5. Feature Impact Visualization
+                st.write("### 📈 Local Feature Impact Analysis")
+                st.caption("Shows the weighted contribution of each biomarker to the diagnostic decision.")
+                
+                # Calculate: Input Value × Global Model Importance
+                impact_list = []
+                for feat in top_10:
+                    weight = feat_df[feat_df['feature'] == feat]['importance'].values[0]
+                    impact_list.append({
+                        "Biomarker": feat, 
+                        "Input Value": user_inputs[feat],
+                        "Importance": weight,
+                        "Diagnostic Impact": user_inputs[feat] * weight
                     })
-                    
-                    inputs_df = pd.DataFrame({
-                        'Feature': list(user_inputs.keys()),
-                        'Value': list(user_inputs.values())
-                    })
-                    
-                    # Combine into downloadable CSV
-                    download_buffer = io.StringIO()
-                    download_buffer.write("=== PREDICTION RESULTS ===\n")
-                    results_df.to_csv(download_buffer, index=False)
-                    download_buffer.write("\n=== INPUT VALUES ===\n")
-                    inputs_df.to_csv(download_buffer, index=False)
-                    
-                    st.download_button(
-                        "📥 Download Prediction Report",
-                        data=download_buffer.getvalue(),
-                        file_name="multinet_prediction_report.csv",
-                        mime="text/csv"
+                
+                # Display impact chart
+                plot_df = pd.DataFrame(impact_list).set_index("Biomarker")
+                st.bar_chart(plot_df[['Diagnostic Impact']], color="#1f77b4")
+                
+                # Display detailed table
+                with st.expander("📋 Detailed Impact Values"):
+                    st.dataframe(
+                        pd.DataFrame(impact_list).style.format({
+                            'Input Value': '{:.4f}',
+                            'Importance': '{:.4f}',
+                            'Diagnostic Impact': '{:.4f}'
+                        }),
+                        use_container_width=True
                     )
+                
+                # 6. Download Results
+                st.divider()
+                st.write("### 💾 Export Results")
+                
+                # Create results dataframe
+                results_df = pd.DataFrame({
+                    'Metric': ['Prediction', 'Probability', 'Confidence'],
+                    'Value': [prediction, f"{prob:.4f}", f"{confidence:.1f}%"]
+                })
+                
+                inputs_df = pd.DataFrame({
+                    'Feature': list(user_inputs.keys()),
+                    'Value': list(user_inputs.values())
+                })
+                
+                # Combine into downloadable CSV
+                download_buffer = io.StringIO()
+                download_buffer.write("=== PREDICTION RESULTS ===\n")
+                results_df.to_csv(download_buffer, index=False)
+                download_buffer.write("\n=== INPUT VALUES ===\n")
+                inputs_df.to_csv(download_buffer, index=False)
+                
+                st.download_button(
+                    "📥 Download Prediction Report",
+                    data=download_buffer.getvalue(),
+                    file_name="multinet_prediction_report.csv",
+                    mime="text/csv"
+                )
         
         # TAB 2: Bulk Upload
         with tab2:
