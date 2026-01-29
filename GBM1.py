@@ -8,7 +8,7 @@ import io
 from PIL import Image
 
 # --- Page Configuration ---
-st.set_page_config(page_title="MOmics-AI", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="MultiNet_AI", layout="wide", page_icon="🧬")
 
 # --- Custom CSS for Blue Theme ---
 st.markdown("""
@@ -98,7 +98,14 @@ def load_assets():
             'Influence Score': importances
         }).sort_values(by='Influence Score', ascending=False)
         
-        return model, feature_names, importance_df
+        # Calculate features for 95% cumulative importance
+        cumsum = importance_df['Influence Score'].cumsum()
+        features_95_pct = importance_df[cumsum <= 0.95]['Biomarker'].tolist()
+        # Ensure we have at least the features contributing to 95%
+        if len(features_95_pct) == 0:
+            features_95_pct = importance_df.head(160)['Biomarker'].tolist()
+        
+        return model, feature_names, importance_df, features_95_pct
     except FileNotFoundError:
         st.error("File 'gbm_clinical_model.pkl' not found. Please ensure it is in the root directory.")
         st.stop()
@@ -106,47 +113,7 @@ def load_assets():
         st.error(f"Initialization Error: {e}")
         st.stop()
 
-model, feature_names, importance_df = load_assets()
-
-# --- Data Validation Function ---
-def validate_headers(df, feature_names):
-    """
-    Validate that uploaded data has matching column headers
-    Returns: (is_valid, error_messages)
-    """
-    errors = []
-    
-    # Check if dataframe is empty
-    if df.empty:
-        errors.append("❌ The uploaded file is empty. Please provide patient data.")
-        return False, errors
-    
-    # Check for column headers
-    if df.columns.tolist() == list(range(len(df.columns))):
-        errors.append("❌ No column headers detected. Please ensure your CSV file has headers in the first row.")
-        return False, errors
-    
-    # Get uploaded columns
-    uploaded_cols = set(df.columns)
-    expected_cols = set(feature_names)
-    
-    # Check for matching columns
-    matching_cols = uploaded_cols.intersection(expected_cols)
-    
-    if len(matching_cols) == 0:
-        errors.append("❌ No matching biomarker columns found. Please check your column headers.")
-        errors.append("   Expected format: biomarker names with suffixes like '_prot', '_rna', '_met'")
-        errors.append("   Example: 'TP53_prot', 'EGFR_rna', 'Glucose_met'")
-        
-        # Show first few columns as reference
-        if len(uploaded_cols) > 0:
-            sample_cols = list(uploaded_cols)[:5]
-            errors.append(f"   Your columns start with: {', '.join(sample_cols)}")
-        
-        return False, errors
-    
-    # If we have at least some matching columns, consider it valid
-    return True, errors
+model, feature_names, importance_df, features_95_pct = load_assets()
 
 # --- Generate Sample Demo Data ---
 @st.cache_data
@@ -280,19 +247,6 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
                 showlegend=True
             )
             st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_bar")
-        
-        # Add Risk Probability List below the charts
-        st.divider()
-        st.subheader("Risk Probability List")
-        
-        # Create a clean dataframe for display
-        risk_list_df = results[['Prediction', 'Risk Score']].copy()
-        risk_list_df['Patient ID'] = risk_list_df.index
-        risk_list_df['Risk Score'] = risk_list_df['Risk Score'].apply(lambda x: f"{x:.2%}")
-        risk_list_df = risk_list_df[['Patient ID', 'Prediction', 'Risk Score']]
-        
-        # Display as a dataframe
-        st.dataframe(risk_list_df, use_container_width=True, hide_index=True)
 
 # --- Section: Complete Dashboard ---
 def render_dashboard(results, mode="manual", key_prefix=""):
@@ -410,7 +364,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("MOmics-AI")
+st.sidebar.title("MultiNet_AI")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Navigation",
@@ -418,7 +372,7 @@ page = st.sidebar.radio(
 )
 
 # --- MAIN INTERFACE ---
-st.title("MOmics-AI | GBM Clinical Diagnostic Suite")
+st.title("MultiNet_AI | GBM Clinical Diagnostic Suite")
 
 # ============================================================================
 # HOME PAGE
@@ -441,18 +395,19 @@ if page == "Home":
 elif page == "Documentation":
     st.header("System Documentation")
     
+    # Create tabs for documentation sections (Backend removed, Frontend merged with Model)
     doc_tabs = st.tabs([
         "Overview",
         "System Architecture & Model",
         "Data Requirements"
     ])
     
-    # Overview Tab
+    # Overview Tab with numbered lists
     with doc_tabs[0]:
         st.markdown("""
         ### Purpose & Scope
         
-        MOmics-AI is a clinical decision support tool designed for glioblastoma patient risk stratification. 
+        MultiNet_AI is a clinical decision support tool designed for glioblastoma patient risk stratification. 
         The system integrates multi-omics biomarker data to generate probability-based risk assessments, 
         helping clinicians identify high-risk patients who may benefit from aggressive treatment strategies.
         
@@ -460,11 +415,11 @@ elif page == "Documentation":
         
         The platform follows a streamlined analysis pipeline:
         
-        1. **Data Input**: Raw laboratory values for 843 biomarkers (proteomics, transcriptomics, metabolomics)
-        2. **Preprocessing**: Automatic alignment with model feature space, zero-filling for missing markers
-        3. **Inference**: XGBoost model generates risk probability scores
-        4. **Visualization**: Interactive dashboards display predictions, biomarker influences, and patient profiles
-        5. **Export**: Results available for clinical record integration
+        1. Data Input: Raw laboratory values for 843 biomarkers (proteomics, transcriptomics, metabolomics)
+        2. Preprocessing: Automatic alignment with model feature space, zero-filling for missing markers
+        3. Inference: XGBoost model generates risk probability scores
+        4. Visualization: Interactive dashboards display predictions, biomarker influences, and patient profiles
+        5. Export: Results available for clinical record integration
         
         ### Clinical Use Cases
         
@@ -514,21 +469,138 @@ elif page == "Documentation":
         4. UTF-8 encoding
         """)
     
-    # System Architecture & Model Tab
+    # System Architecture & Model Tab (Frontend + Model merged, numbered lists)
     with doc_tabs[1]:
         st.markdown("""
-        ### System Architecture Overview
+        ### Frontend Technology Stack
         
-        MultiNet_AI follows a three-tier architecture consisting of:
+        **Framework**: Streamlit 1.28+
+        1. Rapid prototyping and deployment
+        2. Built-in widget management
+        3. Session state handling
+        4. Automatic reactivity
         
-        1. **Frontend Layer** (Streamlit-based User Interface)
-        2. **Backend Layer** (Python Processing Engine)
-        3. **Machine Learning Layer** (XGBoost Model)
+        **Visualization**: Plotly 5.17+
+        1. Interactive charts and graphs
+        2. Hover tooltips and zooming
+        3. Export capabilities
+        4. Responsive design
         
-        For detailed technical documentation, please refer to the full system architecture guide.
+        **Data Handling**: Pandas 2.0+, NumPy 1.24+
+        1. Efficient data manipulation
+        2. Missing value handling
+        3. Type conversion utilities
+        4. Statistical operations
+        
+        **Styling**: Custom CSS
+        1. Responsive layout design
+        2. Theme customization
+        3. Component styling
+        4. Brand consistency
+        
+        ### Machine Learning Model
+        
+        #### Algorithm: XGBoost (Extreme Gradient Boosting)
+        
+        **Why XGBoost?**
+        1. Efficiently processes 843 high-dimensional features
+        2. Tree-based structure captures complex non-linear interactions
+        3. Built-in gain-based feature importance calculation
+        4. L1/L2 regularization prevents overfitting
+        
+        #### Model Specifications
+        
+        **Task Definition**
+        1. Supervised binary classification
+        2. Output: High risk (1) vs Low risk (0)
+        3. Evaluation: Probability scores
+        
+        **Input Features**
+        1. 843 multi-omics biomarkers
+        2. Continuous numeric values
+        3. No categorical encoding needed
+        4. Raw values (no normalization)
+        
+        **Output Format**
+        1. Probability scores via logistic objective
+        2. Range: 0.0 to 1.0
+        3. Calibrated via Platt scaling
+        4. Confidence intervals available
+        
+        #### Training Protocol
+        1. Supervised learning on labeled patient outcomes
+        2. 5-fold stratified cross-validation for hyperparameter tuning
+        3. Early stopping to prevent overfitting (50 rounds patience)
+        4. Stratified sampling for class balance
+        5. AUC-ROC as primary evaluation metric
+        
+        #### Feature Importance Analysis
+        
+        **Cumulative Importance Distribution**
+        1. Top 6 features: 50% of model's predictive power
+        2. Top 30 features: 80% of model's predictive power  
+        3. Top 75 features: 90% of model's predictive power
+        4. Top 160 features: 95% of model's predictive power
+        5. All 843 features: 100% coverage
+        
+        **Calculation Method**
+        1. Gain-based importance measures improvement in objective function
+        2. Normalized to sum to 1.0
+        3. Aggregated across all trees in ensemble
+        4. Higher values indicate stronger predictive power
+        
+        **Clinical Application**
+        1. Laboratory focus: Prioritize high-importance biomarkers
+        2. Cost-effectiveness: Measure critical markers first
+        3. Research: Validate known and discover novel markers
+        4. Therapy: Target pathways with important markers
+        
+        ### Model Outputs
+        
+        ####Risk Score Interpretation
+        
+        **Score Ranges**
+        1. 0.0-0.3: Very low risk, minimal intervention
+        2. 0.3-0.5: Low risk, surveillance acceptable
+        3. 0.5-0.7: Moderate-high risk, standard treatment
+        4. 0.7-1.0: Very high risk, aggressive treatment
+        
+        **Prediction Labels**
+        1. High Risk: Score ≥ 0.5, poor outcomes expected
+        2. Low Risk: Score < 0.5, favorable prognosis
+        3. Decision boundary: 50% probability threshold
+        4. Adjustable based on clinical context
+        
+        ### Model Limitations
+        
+        #### Scope Limitations
+        1. Trained only on glioblastoma patients
+        2. Not applicable to other brain tumors
+        3. Not validated for recurrent disease
+        4. Limited to adult patients (≥18 years)
+        
+        #### Clinical Considerations
+        1. Provides risk stratification, not diagnosis
+        2. Should complement, not replace, clinical judgment
+        3. Consider patient comorbidities and imaging
+        4. Requires external validation in prospective studies
+        
+        #### Technical Constraints
+        1. Zero-filling may not capture true baseline for all markers
+        2. Assumes consistent measurement protocols across labs
+        3. Model may need retraining as standards evolve
+        4. Batch processing preferred for large cohorts
+        
+        ### Recommendations
+        
+        1. Present at multidisciplinary tumor board discussions
+        2. Adjust risk cutoffs based on institutional resources
+        3. Track model performance on real-world patients
+        4. Periodically retrain with new data to maintain accuracy
+        5. Validate lab measurement protocols regularly
         """)
     
-    # Data Requirements Tab
+    # Data Requirements Tab (numbered lists)
     with doc_tabs[2]:
         st.markdown("""
         ### Input Data Specifications
@@ -580,7 +652,13 @@ elif page == "Documentation":
         1. Enter `0.0` to represent baseline/undetected levels
         2. Leave cells empty in CSV (will be filled with 0.0)
         3. Do not use NULL, NA, or text indicators
-        4. Missing markers are automatically filled with 0.0
+        4. Missing markers reduce accuracy but don't break model
+        
+        **Value Validation**
+        1. Negative values not expected (will be flagged)
+        2. Extremely large values (>10000) reviewed for errors
+        3. Outliers beyond 3 standard deviations highlighted
+        4. Duplicate entries detected and reported
         
         #### CSV File Format (Bulk Upload)
         
@@ -593,7 +671,8 @@ elif page == "Documentation":
         **Data Rows**
         1. One patient per row
         2. No blank rows between records
-        3. Maximum recommended: 1000 patients per file
+        3. Patient ID optional (can be first column)
+        4. Maximum recommended: 1000 patients per file
         
         **Technical Specifications**
         1. Delimiter: Comma (,)
@@ -606,10 +685,11 @@ elif page == "Documentation":
         1. Extra columns automatically dropped during processing
         2. Missing columns filled with 0.0 during alignment
         3. Column order does not matter
+        4. Patient IDs preserved if labeled correctly
         
         #### Manual Entry Guidelines
         
-        1. Prioritize top 12 high-influence markers shown by default
+        1. Prioritize top 160 high-influence markers (95% predictive power)
         2. Use zero for unknowns (leave fields at 0.0 if data unavailable)
         3. Check units (ensure values match training data scale)
         4. Avoid text (only numeric inputs accepted)
@@ -625,10 +705,11 @@ elif page == "Documentation":
         
         **Filling the Template**
         1. Open in spreadsheet software (Excel, Google Sheets, LibreOffice)
-        2. One patient per row starting from row 2
-        3. Fill columns with numeric values
-        4. Save as CSV format (not Excel .xlsx)
-        5. Upload via User Analysis interface
+        2. Enable data validation for numeric columns
+        3. One patient per row starting from row 2
+        4. Fill columns left to right
+        5. Save as CSV format (not Excel .xlsx)
+        6. Upload via User Analysis interface
         
         ### Data Privacy & Security
         
@@ -644,6 +725,13 @@ elif page == "Documentation":
         3. Isolated analysis environments
         4. Secure HTTPS transmission
         
+        **HIPAA Considerations**
+        1. Suitable for de-identified research data
+        2. No PHI storage or transmission
+        3. Audit logging available
+        4. Compliant with de-identification standards
+        5. Business Associate Agreement available
+        
         **Best Practices**
         1. Remove patient names from CSV files
         2. Use study IDs instead of medical record numbers
@@ -653,39 +741,62 @@ elif page == "Documentation":
         """)
 
 # ============================================================================
-# USER ANALYSIS PAGE - WITH HEADER VALIDATION ONLY
+# USER ANALYSIS PAGE
 # ============================================================================
 elif page == "User Analysis":
     st.header("User Analysis")
     
+    st.info(f"""**High-Priority Biomarkers**: The manual entry form displays the top {len(features_95_pct)} biomarkers 
+    that account for 95% of the model's predictive ability. These are the most critical markers for accurate risk assessment.""")
+    
     # Create tabs for analysis modes
     analysis_tabs = st.tabs(["Manual Patient Entry", "Bulk Data Upload"])
     
-    # Manual Entry Tab
-    with analysis_tabs[0]:
-        st.subheader("Manual Patient Entry")
-        st.info("Input raw laboratory values. Markers left at 0.0 will be treated as baseline. Click 'Analyze Single Patient' to see results.")
-        
-        # Manual Entry Fields
-        user_inputs = {}
-        m_cols = st.columns(3)
-        # High-influence markers first
-        for i, name in enumerate(feature_names[:12]):
-            with m_cols[i % 3]:
-                user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
-                
-        with st.expander("Advanced Marker Input (Full 843 Set)"):
-            adv_cols = st.columns(4)
-            for i, name in enumerate(feature_names[12:]):
-                with adv_cols[i % 4]:
-                    user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
+    # Manual Entry Tab - Using top 95% features
+# Manual Entry Tab - Using top 95% features
+with analysis_tabs[0]:
+    st.subheader("Manual Patient Entry")
+    st.info(f"Input raw laboratory values for the {len(features_95_pct)} most important biomarkers (95% predictive power). Markers left at 0.0 will be treated as baseline.")
+    
+    # Manual Entry Fields using features_95_pct
+    user_inputs = {}
+    
+    # Display top 30 in main view with proper iteration
+    st.write(f"### Top 30 Most Important Biomarkers")
+    
+    # Create rows of 3 columns each
+    num_to_show_main = min(30, len(features_95_pct))
+    for row_start in range(0, num_to_show_main, 3):
+        cols = st.columns(3)
+        for col_idx in range(3):
+            feature_idx = row_start + col_idx
+            if feature_idx < num_to_show_main:
+                name = features_95_pct[feature_idx]
+                with cols[col_idx]:
+                    user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
+    
+    # Put remaining 95% features in expander
+    if len(features_95_pct) > 30:
+        with st.expander(f"Additional High-Importance Markers ({len(features_95_pct) - 30} more)"):
+            # Create rows of 4 columns each for remaining features
+            remaining_features = features_95_pct[30:]
+            for row_start in range(0, len(remaining_features), 4):
+                cols = st.columns(4)
+                for col_idx in range(4):
+                    feature_idx = row_start + col_idx
+                    if feature_idx < len(remaining_features):
+                        name = remaining_features[feature_idx]
+                        with cols[col_idx]:
+                            user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
+    
+    # Fill remaining features with 0
+    for name in feature_names:
+        if name not in user_inputs:
+            user_inputs[name] = 0.0
 
-        # IMPORTANT: Only show results AFTER button click
-        if st.button("Analyze Single Patient", key="btn_manual", type="primary"):
-            m_results = process_data(pd.DataFrame([user_inputs]))
-            st.success("Analysis Complete! Results displayed below.")
-            st.divider()
-            render_dashboard(m_results, mode="manual", key_prefix="man")
+    if st.button("Analyze Single Patient", key="btn_manual"):
+        m_results = process_data(pd.DataFrame([user_inputs]))
+        render_dashboard(m_results, mode="manual", key_prefix="man")
     
     # Bulk Upload Tab
     with analysis_tabs[1]:
@@ -707,66 +818,16 @@ elif page == "User Analysis":
         
         with col_t1:
             st.write("### Upload Patient Data")
-            uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv", 
-                                            help="Upload a CSV file with patient biomarker data")
+            uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv")
         
-        # IMPORTANT: Validate headers BEFORE processing
-        if uploaded_file is not None:
-            try:
-                raw_df = pd.read_csv(uploaded_file)
-                
-                # Validate only the headers
-                is_valid, errors = validate_headers(raw_df, feature_names)
-                
-                if not is_valid:
-                    # Show errors
-                    st.error("**Column Header Validation Failed**")
-                    for error in errors:
-                        st.error(error)
-                    
-                    # Show helpful guidance
-                    with st.expander("ℹ️ How to Fix These Issues"):
-                        st.markdown("""
-                        **Common Issues and Solutions:**
-                        
-                        1. **Missing or incorrect headers:**
-                           - Download the template using the button above
-                           - Ensure your column names exactly match the template
-                           - Check for typos in biomarker names (case-sensitive)
-                           - Headers must include suffixes: '_prot', '_rna', or '_met'
-                        
-                        2. **File format issues:**
-                           - Save your file as CSV format (.csv)
-                           - Use UTF-8 encoding
-                           - Ensure the first row contains column headers
-                        
-                        **Need Help?**
-                        - Navigate to Documentation → Data Requirements for detailed specifications
-                        - Download and review the template file
-                        - Ensure your column headers follow the expected naming convention
-                        """)
-                
-                else:
-                    # Headers are valid - proceed with processing
-                    st.success(f"✅ File uploaded successfully! Found {len(raw_df)} patient(s).")
-                    
-                    # Process and show dashboard
-                    b_results = process_data(raw_df)
-                    st.divider()
-                    st.subheader("Analysis Results")
-                    render_dashboard(b_results, mode="bulk", key_prefix="blk")
-                    
-            except pd.errors.EmptyDataError:
-                st.error("❌ The uploaded file is empty. Please provide a valid CSV file with patient data.")
-            except pd.errors.ParserError:
-                st.error("❌ Error parsing CSV file. Please ensure your file is properly formatted.")
-                st.info("Tip: Open the file in a text editor and check for unusual characters or formatting.")
-            except Exception as e:
-                st.error(f"❌ Unexpected error processing file: {e}")
-                st.info("Please ensure your CSV file follows the template format. Download the template above for reference.")
+        if uploaded_file:
+            raw_df = pd.read_csv(uploaded_file)
+            # Process and show dashboard
+            b_results = process_data(raw_df)
+            render_dashboard(b_results, mode="bulk", key_prefix="blk")
 
 # ============================================================================
-# DEMO WALKTHROUGH PAGE - RESULTS ONLY AFTER BUTTON CLICK
+# DEMO WALKTHROUGH PAGE - WITH PRE-LOADED SAMPLE DATA
 # ============================================================================
 elif page == "Demo Walkthrough":
     st.header("Interactive Demo Workspace")
@@ -823,15 +884,13 @@ elif page == "Demo Walkthrough":
             with col_info3:
                 st.info("**Patient 2**\nModerate profile\nMixed signals")
         
-        # IMPORTANT: Analysis button - results ONLY shown after click
+        # Analysis button
         if st.button("Analyze Sample Patients", key="analyze_demo_patients", type="primary"):
             st.markdown("---")
+            st.success("Processing sample dataset...")
             
             # Process the demo data
-            with st.spinner("🔬 Analyzing biomarkers..."):
-                demo_results = process_data(demo_data)
-            
-            st.success("✅ Analysis Complete!")
+            demo_results = process_data(demo_data)
             
             # Display results
             st.markdown("""
@@ -852,7 +911,6 @@ elif page == "Demo Walkthrough":
             <ul>
                 <li><strong>Histogram:</strong> Distribution of risk scores across all 3 patients</li>
                 <li><strong>Bar Chart:</strong> Individual patient risk probabilities sorted by risk level</li>
-                <li><strong>Risk Probability List:</strong> Table showing all patients' risk scores</li>
                 <li><strong>Patient Selector:</strong> Choose individual patients to see detailed profiles</li>
                 <li><strong>Multi-Modal Radar:</strong> Shows protein/RNA/metabolite balance</li>
                 <li><strong>Top Markers:</strong> Patient-specific elevated biomarkers</li>
@@ -861,7 +919,7 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            st.info("💡 Tip: Use the patient selector dropdown to compare the three different risk profiles")
+            st.info("Tip: Use the patient selector dropdown to compare the three different risk profiles")
     
     # MODE 2: GUIDED TUTORIAL
     elif demo_mode == "Guided Tutorial":
@@ -888,6 +946,7 @@ elif page == "Demo Walkthrough":
             
             st.info("""
             **What you see:**
+            
             1. 3 rows = 3 sample patients
             2. Columns = Biomarker measurements
             3. Values = Simulated lab results
@@ -907,13 +966,12 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            # IMPORTANT: Process ONLY when button clicked
-            if st.button("Process Sample Data", key="tutorial_analyze", type="primary"):
-                with st.spinner("🔬 Analyzing biomarkers..."):
+            if st.button("Process Sample Data", key="tutorial_analyze"):
+                with st.spinner("Analyzing biomarkers..."):
                     st.session_state.demo_results = process_data(demo_data)
                     st.session_state.tutorial_step = 2
-                st.success("Analysis complete!")
-                st.rerun()
+                    st.success("Analysis complete")
+                    st.rerun()
         
         elif st.session_state.tutorial_step == 2:
             st.markdown("""
@@ -924,10 +982,9 @@ elif page == "Demo Walkthrough":
             """, unsafe_allow_html=True)
             
             # Show risk charts
-            if 'demo_results' in st.session_state:
-                render_risk_charts(st.session_state.demo_results, mode="bulk", key_prefix="tutorial")
+            render_risk_charts(st.session_state.demo_results, mode="bulk", key_prefix="tutorial")
             
-            st.info("These charts show how the 3 patients' risk scores are distributed. Notice the different risk categories and the risk probability list showing exact values.")
+            st.info("These charts show how the 3 patients' risk scores are distributed. Notice the different risk categories and how patients rank relative to each other.")
             
             if st.button("Next: Individual Patient", key="tutorial_next_2"):
                 st.session_state.tutorial_step = 3
@@ -941,25 +998,24 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            if 'demo_results' in st.session_state:
-                selected = st.selectbox("Choose a patient:", [0, 1, 2], key="tutorial_patient_select")
-                patient_row = st.session_state.demo_results.iloc[selected]
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Prediction", patient_row["Prediction"])
-                with col2:
-                    st.metric("Risk Score", f"{patient_row['Risk Score']:.1%}")
-                
-                st.write("### Patient's Biomarker Profile:")
-                markers = patient_row.drop(['Prediction', 'Risk Score'])
-                top_10 = markers.astype(float).sort_values(ascending=False).head(10)
-                
-                fig = px.bar(x=top_10.values, y=top_10.index, orientation='h',
-                            title=f"Top 10 Biomarkers - Patient {selected}")
-                st.plotly_chart(fig, use_container_width=True)
-                
-                st.success("You can see which biomarkers are most elevated in this patient")
+            selected = st.selectbox("Choose a patient:", [0, 1, 2], key="tutorial_patient_select")
+            patient_row = st.session_state.demo_results.iloc[selected]
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Prediction", patient_row["Prediction"])
+            with col2:
+                st.metric("Risk Score", f"{patient_row['Risk Score']:.1%}")
+            
+            st.write("### Patient's Biomarker Profile:")
+            markers = patient_row.drop(['Prediction', 'Risk Score'])
+            top_10 = markers.astype(float).sort_values(ascending=False).head(10)
+            
+            fig = px.bar(x=top_10.values, y=top_10.index, orientation='h',
+                        title=f"Top 10 Biomarkers - Patient {selected}")
+            st.plotly_chart(fig, use_container_width=True)
+            
+            st.success("You can see which biomarkers are most elevated in this patient")
             
             if st.button("Next: Wrap Up", key="tutorial_next_3"):
                 st.session_state.tutorial_step = 4
@@ -968,12 +1024,12 @@ elif page == "Demo Walkthrough":
         elif st.session_state.tutorial_step == 4:
             st.markdown("""
             <div class="demo-box demo-success">
-            <h3>Tutorial Complete! 🎉</h3>
+            <h3>Tutorial Complete</h3>
             <p>You've learned how to:</p>
             <ul>
                 <li>1. Work with sample patient data</li>
                 <li>2. Run risk analysis</li>
-                <li>3. View cohort results and risk probability list</li>
+                <li>3. View cohort results</li>
                 <li>4. Examine individual patients</li>
             </ul>
             </div>
@@ -982,12 +1038,11 @@ elif page == "Demo Walkthrough":
             st.write("### Next Steps:")
             col_next1, col_next2 = st.columns(2)
             with col_next1:
-                st.info("📊 Navigate to 'User Analysis' in the sidebar to work with your own data")
+                if st.button("Go to User Analysis", key="goto_user_analysis"):
+                    st.info("Navigate to 'User Analysis' in the sidebar to work with your own data")
             with col_next2:
-                if st.button("🔄 Restart Tutorial", key="restart_tut"):
+                if st.button("Restart Tutorial", key="restart_tut"):
                     st.session_state.tutorial_step = 0
-                    if 'demo_results' in st.session_state:
-                        del st.session_state.demo_results
                     st.rerun()
     
     # MODE 3: LEARN BY EXPLORING
@@ -1007,12 +1062,9 @@ elif page == "Demo Walkthrough":
         with exploration_tab[0]:
             st.write("### Analyze Sample Patients")
             
-            # IMPORTANT: Results ONLY shown after button click
-            if st.button("Load & Analyze Sample Data", key="explore_analyze", type="primary"):
-                with st.spinner("🔬 Analyzing sample data..."):
-                    demo_results = process_data(demo_data)
-                st.success("✅ Sample data analyzed successfully!")
-                st.divider()
+            if st.button("Load & Analyze Sample Data", key="explore_analyze"):
+                demo_results = process_data(demo_data)
+                st.success("Sample data analyzed")
                 render_dashboard(demo_results, mode="bulk", key_prefix="explore")
         
         with exploration_tab[1]:
@@ -1038,9 +1090,8 @@ elif page == "Demo Walkthrough":
                 1. **Gauge**: Individual risk percentage
                 2. **Histogram**: Cohort distribution
                 3. **Bar Chart**: Individual patient risk scores sorted
-                4. **Risk Probability List**: Table with exact percentages
-                5. **Radar**: Multi-modal balance
-                6. **Bar Charts**: Biomarker levels
+                4. **Radar**: Multi-modal balance
+                5. **Bar Charts**: Biomarker levels
                 """)
         
         with exploration_tab[2]:
@@ -1049,20 +1100,18 @@ elif page == "Demo Walkthrough":
             st.info("""
             **Things to Try:**
             1. Compare all 3 sample patients' profiles
-            2. Look at the risk probability list to see exact scores
-            3. Look for patterns in biomarker elevation
-            4. See how protein/RNA/metabolite balance differs
-            5. Check which markers appear in both patient-specific and global importance
-            6. Expand the "View All Biomarker Values" section
+            2. Look for patterns in biomarker elevation
+            3. See how protein/RNA/metabolite balance differs
+            4. Check which markers appear in both patient-specific and global importance
+            5. Expand the "View All Biomarker Values" section
             """)
             
             st.success("""
             **What Makes a Good Analysis:**
             1. Review both cohort and individual results
-            2. Check the risk probability list for exact percentages
-            3. Compare patient markers to global importance
-            4. Note the multi-modal signature shape
-            5. Look for biomarker clusters
+            2. Compare patient markers to global importance
+            3. Note the multi-modal signature shape
+            4. Look for biomarker clusters
             """)
 
     # Add reset button at bottom of demo page
