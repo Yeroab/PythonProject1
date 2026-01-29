@@ -8,7 +8,7 @@ import io
 from PIL import Image
 
 # --- Page Configuration ---
-st.set_page_config(page_title="MultiNet_AI", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="MOmics-AI", layout="wide", page_icon="🧬")
 
 # --- Custom CSS for Blue Theme ---
 st.markdown("""
@@ -1253,7 +1253,7 @@ elif page == "User Analysis":
         # IMPORTANT: Only show results AFTER button click
         if st.button("Analyze Single Patient", key="btn_manual", type="primary"):
             m_results = process_data(pd.DataFrame([user_inputs]))
-            st.success("✅ Analysis Complete! Results displayed below.")
+            st.success("Analysis Complete! Results displayed below.")
             st.divider()
             render_dashboard(m_results, mode="manual", key_prefix="man")
     
@@ -1284,7 +1284,7 @@ elif page == "User Analysis":
         if uploaded_file is not None:
             try:
                 raw_df = pd.read_csv(uploaded_file)
-                st.success(f"✅ File uploaded successfully! Found {len(raw_df)} patient(s).")
+                st.success(f" File uploaded successfully! Found {len(raw_df)} patient(s).")
                 
                 # Process and show dashboard
                 b_results = process_data(raw_df)
@@ -1292,7 +1292,7 @@ elif page == "User Analysis":
                 st.subheader("Analysis Results")
                 render_dashboard(b_results, mode="bulk", key_prefix="blk")
             except Exception as e:
-                st.error(f"❌ Error processing file: {e}")
+                st.error(f" Error processing file: {e}")
                 st.info("Please ensure your CSV file follows the template format.")
 
 # ============================================================================
@@ -1361,7 +1361,7 @@ elif page == "Demo Walkthrough":
             with st.spinner("🔬 Analyzing biomarkers..."):
                 demo_results = process_data(demo_data)
             
-            st.success("✅ Analysis Complete!")
+            st.success(" Analysis Complete!")
             
             # Display results
             st.markdown("""
@@ -1442,7 +1442,7 @@ elif page == "Demo Walkthrough":
                 with st.spinner("🔬 Analyzing biomarkers..."):
                     st.session_state.demo_results = process_data(demo_data)
                     st.session_state.tutorial_step = 2
-                st.success("✅ Analysis complete!")
+                st.success("Analysis complete!")
                 st.rerun()
         
         elif st.session_state.tutorial_step == 2:
@@ -1498,7 +1498,7 @@ elif page == "Demo Walkthrough":
         elif st.session_state.tutorial_step == 4:
             st.markdown("""
             <div class="demo-box demo-success">
-            <h3>Tutorial Complete! 🎉</h3>
+            <h3>Tutorial Complete! </h3>
             <p>You've learned how to:</p>
             <ul>
                 <li>1. Work with sample patient data</li>
@@ -1512,9 +1512,9 @@ elif page == "Demo Walkthrough":
             st.write("### Next Steps:")
             col_next1, col_next2 = st.columns(2)
             with col_next1:
-                st.info("📊 Navigate to 'User Analysis' in the sidebar to work with your own data")
+                st.info(" Navigate to 'User Analysis' in the sidebar to work with your own data")
             with col_next2:
-                if st.button("🔄 Restart Tutorial", key="restart_tut"):
+                if st.button(" Restart Tutorial", key="restart_tut"):
                     st.session_state.tutorial_step = 0
                     if 'demo_results' in st.session_state:
                         del st.session_state.demo_results
@@ -1541,7 +1541,7 @@ elif page == "Demo Walkthrough":
             if st.button("Load & Analyze Sample Data", key="explore_analyze", type="primary"):
                 with st.spinner("🔬 Analyzing sample data..."):
                     demo_results = process_data(demo_data)
-                st.success("✅ Sample data analyzed successfully!")
+                st.success(" Sample data analyzed successfully!")
                 st.divider()
                 render_dashboard(demo_results, mode="bulk", key_prefix="explore")
         
@@ -1597,7 +1597,7 @@ elif page == "Demo Walkthrough":
 
     # Add reset button at bottom of demo page
     st.divider()
-    if st.button("🔄 Reset Demo Workspace"):
+    if st.button("Reset Demo Workspace"):
         # Clear all session state related to demo
         keys_to_clear = [k for k in st.session_state.keys() if 'demo' in k or 'tutorial' in k]
         for key in keys_to_clear:
