@@ -108,6 +108,86 @@ def load_assets():
 
 model, feature_names, importance_df = load_assets()
 
+# --- Data Validation Function ---
+def validate_input_data(df, feature_names):
+    """
+    Validate uploaded data for proper format and headers
+    Returns: (is_valid, error_messages, warnings)
+    """
+    errors = []
+    warnings = []
+    
+    # Check if dataframe is empty
+    if df.empty:
+        errors.append("❌ The uploaded file is empty. Please provide patient data.")
+        return False, errors, warnings
+    
+    # Check for column headers
+    if df.columns.tolist() == list(range(len(df.columns))):
+        errors.append("❌ No column headers detected. Please ensure your CSV file has headers in the first row.")
+        return False, errors, warnings
+    
+    # Get uploaded columns
+    uploaded_cols = set(df.columns)
+    expected_cols = set(feature_names)
+    
+    # Check for matching columns
+    matching_cols = uploaded_cols.intersection(expected_cols)
+    
+    if len(matching_cols) == 0:
+        errors.append("❌ No matching biomarker columns found. Please check your column headers.")
+        errors.append("   Expected format: biomarker names with suffixes like '_prot', '_rna', '_met'")
+        errors.append("   Example: 'TP53_prot', 'EGFR_rna', 'Glucose_met'")
+        
+        # Show first few columns as reference
+        if len(uploaded_cols) > 0:
+            sample_cols = list(uploaded_cols)[:5]
+            errors.append(f"   Your columns start with: {', '.join(sample_cols)}")
+        
+        return False, errors, warnings
+    
+    # Warnings for partial matches
+    if len(matching_cols) < len(expected_cols):
+        missing_count = len(expected_cols) - len(matching_cols)
+        warnings.append(f"⚠️ {missing_count} expected biomarkers are missing and will be filled with 0.0")
+        warnings.append(f"   Found {len(matching_cols)} out of {len(expected_cols)} expected biomarkers")
+    
+    # Check for extra columns
+    extra_cols = uploaded_cols - expected_cols
+    if len(extra_cols) > 0:
+        warnings.append(f"ℹ️ {len(extra_cols)} extra columns will be ignored during analysis")
+        if len(extra_cols) <= 5:
+            warnings.append(f"   Extra columns: {', '.join(list(extra_cols)[:5])}")
+    
+    # Check for non-numeric values in biomarker columns
+    numeric_issues = []
+    for col in matching_cols:
+        try:
+            pd.to_numeric(df[col], errors='coerce')
+            if df[col].isna().all():
+                numeric_issues.append(col)
+        except:
+            numeric_issues.append(col)
+    
+    if numeric_issues:
+        if len(numeric_issues) <= 5:
+            errors.append(f"❌ Non-numeric values detected in columns: {', '.join(numeric_issues[:5])}")
+        else:
+            errors.append(f"❌ Non-numeric values detected in {len(numeric_issues)} columns")
+        errors.append("   All biomarker values must be numeric (integers or decimals)")
+        return False, errors, warnings
+    
+    # Check for negative values
+    negative_cols = []
+    for col in matching_cols:
+        if (pd.to_numeric(df[col], errors='coerce') < 0).any():
+            negative_cols.append(col)
+    
+    if negative_cols:
+        warnings.append(f"⚠️ Negative values detected in {len(negative_cols)} columns - these may affect predictions")
+    
+    return True, errors, warnings
+
 # --- Generate Sample Demo Data ---
 @st.cache_data
 def generate_demo_data():
@@ -1223,7 +1303,7 @@ elif page == "Documentation":
         """)
 
 # ============================================================================
-# USER ANALYSIS PAGE - NO PRE-POPULATED RESULTS
+# USER ANALYSIS PAGE - WITH VALIDATION
 # ============================================================================
 elif page == "User Analysis":
     st.header("User Analysis")
@@ -1280,20 +1360,70 @@ elif page == "User Analysis":
             uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv", 
                                             help="Upload a CSV file with patient biomarker data")
         
-        # IMPORTANT: Only process and show results AFTER file upload
+        # IMPORTANT: Validate BEFORE processing
         if uploaded_file is not None:
             try:
                 raw_df = pd.read_csv(uploaded_file)
-                st.success(f" File uploaded successfully! Found {len(raw_df)} patient(s).")
                 
-                # Process and show dashboard
-                b_results = process_data(raw_df)
-                st.divider()
-                st.subheader("Analysis Results")
-                render_dashboard(b_results, mode="bulk", key_prefix="blk")
+                # Validate the uploaded data
+                is_valid, errors, warnings = validate_input_data(raw_df, feature_names)
+                
+                if not is_valid:
+                    # Show errors
+                    st.error("**Data Validation Failed**")
+                    for error in errors:
+                        st.error(error)
+                    
+                    # Show helpful guidance
+                    with st.expander("ℹ️ How to Fix These Issues"):
+                        st.markdown("""
+                        **Common Issues and Solutions:**
+                        
+                        1. **Missing or incorrect headers:**
+                           - Download the template using the button above
+                           - Ensure your column names exactly match the template
+                           - Check for typos in biomarker names
+                        
+                        2. **Non-numeric values:**
+                           - All biomarker values must be numbers
+                           - Remove any text, symbols, or special characters
+                           - Use 0 or 0.0 for missing values
+                        
+                        3. **File format issues:**
+                           - Save your file as CSV format (.csv)
+                           - Use UTF-8 encoding
+                           - Avoid Excel formatting like formulas
+                        
+                        **Need Help?**
+                        - Navigate to Documentation → Data Requirements for detailed specifications
+                        - Download and review the template file
+                        - Ensure your data follows the expected format
+                        """)
+                
+                else:
+                    # Show success message
+                    st.success(f"✅ File uploaded successfully! Found {len(raw_df)} patient(s).")
+                    
+                    # Show warnings if any
+                    if warnings:
+                        with st.expander("⚠️ Data Warnings (Click to view)"):
+                            for warning in warnings:
+                                st.warning(warning)
+                    
+                    # Process and show dashboard
+                    b_results = process_data(raw_df)
+                    st.divider()
+                    st.subheader("Analysis Results")
+                    render_dashboard(b_results, mode="bulk", key_prefix="blk")
+                    
+            except pd.errors.EmptyDataError:
+                st.error("❌ The uploaded file is empty. Please provide a valid CSV file with patient data.")
+            except pd.errors.ParserError:
+                st.error("❌ Error parsing CSV file. Please ensure your file is properly formatted.")
+                st.info("Tip: Open the file in a text editor and check for unusual characters or formatting.")
             except Exception as e:
-                st.error(f" Error processing file: {e}")
-                st.info("Please ensure your CSV file follows the template format.")
+                st.error(f"❌ Unexpected error processing file: {e}")
+                st.info("Please ensure your CSV file follows the template format. Download the template above for reference.")
 
 # ============================================================================
 # DEMO WALKTHROUGH PAGE - RESULTS ONLY AFTER BUTTON CLICK
@@ -1358,10 +1488,10 @@ elif page == "Demo Walkthrough":
             st.markdown("---")
             
             # Process the demo data
-            with st.spinner(" Analyzing biomarkers..."):
+            with st.spinner("🔬 Analyzing biomarkers..."):
                 demo_results = process_data(demo_data)
             
-            st.success(" Analysis Complete!")
+            st.success("✅ Analysis Complete!")
             
             # Display results
             st.markdown("""
@@ -1391,7 +1521,7 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            st.info(" Tip: Use the patient selector dropdown to compare the three different risk profiles")
+            st.info("💡 Tip: Use the patient selector dropdown to compare the three different risk profiles")
     
     # MODE 2: GUIDED TUTORIAL
     elif demo_mode == "Guided Tutorial":
@@ -1498,7 +1628,7 @@ elif page == "Demo Walkthrough":
         elif st.session_state.tutorial_step == 4:
             st.markdown("""
             <div class="demo-box demo-success">
-            <h3>Tutorial Complete! </h3>
+            <h3>Tutorial Complete! 🎉</h3>
             <p>You've learned how to:</p>
             <ul>
                 <li>1. Work with sample patient data</li>
@@ -1512,9 +1642,9 @@ elif page == "Demo Walkthrough":
             st.write("### Next Steps:")
             col_next1, col_next2 = st.columns(2)
             with col_next1:
-                st.info(" Navigate to 'User Analysis' in the sidebar to work with your own data")
+                st.info("📊 Navigate to 'User Analysis' in the sidebar to work with your own data")
             with col_next2:
-                if st.button(" Restart Tutorial", key="restart_tut"):
+                if st.button("🔄 Restart Tutorial", key="restart_tut"):
                     st.session_state.tutorial_step = 0
                     if 'demo_results' in st.session_state:
                         del st.session_state.demo_results
@@ -1539,9 +1669,9 @@ elif page == "Demo Walkthrough":
             
             # IMPORTANT: Results ONLY shown after button click
             if st.button("Load & Analyze Sample Data", key="explore_analyze", type="primary"):
-                with st.spinner(" Analyzing sample data..."):
+                with st.spinner("🔬 Analyzing sample data..."):
                     demo_results = process_data(demo_data)
-                st.success(" Sample data analyzed successfully!")
+                st.success("✅ Sample data analyzed successfully!")
                 st.divider()
                 render_dashboard(demo_results, mode="bulk", key_prefix="explore")
         
