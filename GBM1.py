@@ -146,13 +146,7 @@ def validate_input_data(df, feature_names):
         
         return False, errors, warnings
     
-    # Warnings for partial matches
-    if len(matching_cols) < len(expected_cols):
-        missing_count = len(expected_cols) - len(matching_cols)
-        warnings.append(f"⚠️ {missing_count} expected biomarkers are missing and will be filled with 0.0")
-        warnings.append(f"   Found {len(matching_cols)} out of {len(expected_cols)} expected biomarkers")
-    
-    # Check for extra columns
+    # Check for extra columns (informational only, not a warning)
     extra_cols = uploaded_cols - expected_cols
     if len(extra_cols) > 0:
         warnings.append(f"ℹ️ {len(extra_cols)} extra columns will be ignored during analysis")
@@ -177,7 +171,7 @@ def validate_input_data(df, feature_names):
         errors.append("   All biomarker values must be numeric (integers or decimals)")
         return False, errors, warnings
     
-    # Check for negative values
+    # Check for negative values (informational warning)
     negative_cols = []
     for col in matching_cols:
         if (pd.to_numeric(df[col], errors='coerce') < 0).any():
@@ -1303,7 +1297,7 @@ elif page == "Documentation":
         """)
 
 # ============================================================================
-# USER ANALYSIS PAGE - WITH VALIDATION
+# USER ANALYSIS PAGE - WITH VALIDATION (NO WARNINGS FOR MISSING VALUES)
 # ============================================================================
 elif page == "User Analysis":
     st.header("User Analysis")
@@ -1404,11 +1398,14 @@ elif page == "User Analysis":
                     # Show success message
                     st.success(f"✅ File uploaded successfully! Found {len(raw_df)} patient(s).")
                     
-                    # Show warnings if any
+                    # Show only informational warnings (not about missing biomarkers)
                     if warnings:
-                        with st.expander("⚠️ Data Warnings (Click to view)"):
-                            for warning in warnings:
-                                st.warning(warning)
+                        # Filter out warnings about missing biomarkers
+                        filtered_warnings = [w for w in warnings if not w.startswith("⚠️") or "biomarkers are missing" not in w]
+                        if filtered_warnings:
+                            with st.expander("ℹ️ Data Information (Click to view)"):
+                                for warning in filtered_warnings:
+                                    st.info(warning)
                     
                     # Process and show dashboard
                     b_results = process_data(raw_df)
