@@ -109,40 +109,25 @@ def load_assets():
 model, feature_names, importance_df = load_assets()
 
 # --- Data Validation Function ---
-def validate_input_data(df, feature_names):
+def validate_headers(df, feature_names):
     """
-    Validate uploaded data for proper format and headers
-    Assumes first column may contain patient IDs (non-numeric)
-    Returns: (is_valid, error_messages, warnings)
+    Validate that uploaded data has matching column headers
+    Returns: (is_valid, error_messages)
     """
     errors = []
-    warnings = []
     
     # Check if dataframe is empty
     if df.empty:
         errors.append("❌ The uploaded file is empty. Please provide patient data.")
-        return False, errors, warnings
+        return False, errors
     
     # Check for column headers
     if df.columns.tolist() == list(range(len(df.columns))):
         errors.append("❌ No column headers detected. Please ensure your CSV file has headers in the first row.")
-        return False, errors, warnings
+        return False, errors
     
-    # Get uploaded columns (excluding first column which may be patient ID)
-    all_columns = set(df.columns)
-    first_col_name = df.columns[0]
-    
-    # Check if first column looks like a patient ID column
-    # Common ID column names
-    id_column_names = ['patient_id', 'patientid', 'id', 'patient', 'sample_id', 'sampleid', 'sample']
-    is_id_column = first_col_name.lower() in id_column_names
-    
-    # Determine which columns to validate for biomarkers
-    if is_id_column:
-        uploaded_cols = set(df.columns[1:])  # Skip first column
-    else:
-        uploaded_cols = all_columns
-    
+    # Get uploaded columns
+    uploaded_cols = set(df.columns)
     expected_cols = set(feature_names)
     
     # Check for matching columns
@@ -153,57 +138,15 @@ def validate_input_data(df, feature_names):
         errors.append("   Expected format: biomarker names with suffixes like '_prot', '_rna', '_met'")
         errors.append("   Example: 'TP53_prot', 'EGFR_rna', 'Glucose_met'")
         
-        # Show first few columns as reference (excluding potential ID column)
+        # Show first few columns as reference
         if len(uploaded_cols) > 0:
             sample_cols = list(uploaded_cols)[:5]
             errors.append(f"   Your columns start with: {', '.join(sample_cols)}")
         
-        return False, errors, warnings
+        return False, errors
     
-    # Check for extra columns (informational only, not a warning)
-    extra_cols = uploaded_cols - expected_cols
-    if is_id_column:
-        extra_cols.discard(first_col_name)  # Don't count ID column as extra
-    
-    if len(extra_cols) > 0:
-        warnings.append(f"ℹ️ {len(extra_cols)} extra columns will be ignored during analysis")
-        if len(extra_cols) <= 5:
-            warnings.append(f"   Extra columns: {', '.join(list(extra_cols)[:5])}")
-    
-    # Check for non-numeric values in biomarker columns (excluding first column if it's an ID)
-    numeric_issues = []
-    cols_to_check = matching_cols
-    
-    for col in cols_to_check:
-        try:
-            # Try to convert to numeric
-            numeric_values = pd.to_numeric(df[col], errors='coerce')
-            # If all values are NaN after conversion, it's all non-numeric
-            if numeric_values.isna().all():
-                numeric_issues.append(col)
-        except:
-            numeric_issues.append(col)
-    
-    if numeric_issues:
-        if len(numeric_issues) <= 5:
-            errors.append(f"❌ Non-numeric values detected in biomarker columns: {', '.join(numeric_issues[:5])}")
-        else:
-            errors.append(f"❌ Non-numeric values detected in {len(numeric_issues)} biomarker columns")
-        errors.append("   All biomarker values must be numeric (integers or decimals)")
-        errors.append("   Note: The first column can contain patient IDs (text)")
-        return False, errors, warnings
-    
-    # Check for negative values (informational warning)
-    negative_cols = []
-    for col in cols_to_check:
-        numeric_values = pd.to_numeric(df[col], errors='coerce')
-        if (numeric_values < 0).any():
-            negative_cols.append(col)
-    
-    if negative_cols:
-        warnings.append(f"⚠️ Negative values detected in {len(negative_cols)} columns - these may affect predictions")
-    
-    return True, errors, warnings
+    # If we have at least some matching columns, consider it valid
+    return True, errors
 
 # --- Generate Sample Demo Data ---
 @st.cache_data
@@ -259,24 +202,8 @@ def generate_demo_data():
 
 # --- Section: Processing Engine (Direct Raw Values) ---
 def process_data(df):
-    """
-    Process data for analysis
-    Handles dataframes with or without patient ID column
-    """
-    # Check if first column is likely a patient ID column
-    first_col_name = df.columns[0]
-    id_column_names = ['patient_id', 'patientid', 'id', 'patient', 'sample_id', 'sampleid', 'sample']
-    
-    # If first column is an ID column, separate it
-    if first_col_name.lower() in id_column_names:
-        patient_ids = df[first_col_name]
-        data_cols = df.drop(columns=[first_col_name])
-    else:
-        patient_ids = None
-        data_cols = df
-    
     # Align user input with the 843 markers expected by the model
-    df_aligned = data_cols.reindex(columns=feature_names, fill_value=0.0)
+    df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
     
     with st.spinner("Analyzing Patient Biomarkers..."):
         # Inference using raw values (as requested)
@@ -287,11 +214,6 @@ def process_data(df):
             "Prediction": ["High Risk" if p == 1 else "Low Risk" for p in preds],
             "Risk Score": probs
         })
-        
-        # Add patient IDs if they exist
-        if patient_ids is not None:
-            results.insert(0, 'Patient_ID', patient_ids.values)
-        
         # Merge risk results with original marker data
         return pd.concat([results, df_aligned.reset_index(drop=True)], axis=1)
 
@@ -337,15 +259,15 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
         with col_chart2:
             # Bar chart of all patients' risk probabilities
             results_sorted = results.sort_values('Risk Score', ascending=False).reset_index(drop=True)
-            results_sorted['Patient_Index'] = results_sorted.index
+            results_sorted['Patient_ID'] = results_sorted.index
             
             fig_bar = px.bar(results_sorted, 
-                            x='Patient_Index', 
+                            x='Patient_ID', 
                             y='Risk Score',
                             color='Prediction',
                             title="Individual Patient Risk Scores",
                             color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#00CC96"},
-                            labels={'Patient_Index': 'Patient Index', 'Risk Score': 'Risk Probability'})
+                            labels={'Patient_ID': 'Patient Index', 'Risk Score': 'Risk Probability'})
             
             # Add threshold line at 0.5
             fig_bar.add_hline(y=0.5, line_dash="dash", line_color="gray", 
@@ -364,16 +286,10 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
         st.subheader("Risk Probability List")
         
         # Create a clean dataframe for display
-        display_cols = []
-        if 'Patient_ID' in results.columns:
-            display_cols.append('Patient_ID')
-        
-        risk_list_df = results[display_cols + ['Prediction', 'Risk Score']].copy()
-        
-        if 'Patient_ID' not in results.columns:
-            risk_list_df.insert(0, 'Patient Index', risk_list_df.index)
-        
+        risk_list_df = results[['Prediction', 'Risk Score']].copy()
+        risk_list_df['Patient ID'] = risk_list_df.index
         risk_list_df['Risk Score'] = risk_list_df['Risk Score'].apply(lambda x: f"{x:.2%}")
+        risk_list_df = risk_list_df[['Patient ID', 'Prediction', 'Risk Score']]
         
         # Display as a dataframe
         st.dataframe(risk_list_df, use_container_width=True, hide_index=True)
@@ -410,22 +326,12 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     # 3. Individual Patient Explorer
     st.divider()
     st.subheader("Individual Patient Analysis")
-    
-    # Create display options for patient selector
-    if 'Patient_ID' in results.columns:
-        patient_display = [f"{results.iloc[i]['Patient_ID']} (Index {i})" for i in results.index]
-    else:
-        patient_display = [f"Patient {i}" for i in results.index]
-    
-    selected_display = st.selectbox("Select Patient Record", patient_display, key=f"{key_prefix}_select")
-    selected_idx = patient_display.index(selected_display)
+    selected_idx = st.selectbox("Select Patient Record", results.index, key=f"{key_prefix}_select")
     patient_row = results.iloc[selected_idx]
     
     # Display patient risk info
     col_info1, col_info2 = st.columns(2)
     with col_info1:
-        if 'Patient_ID' in results.columns:
-            st.metric("Patient ID", patient_row["Patient_ID"])
         st.metric("Prediction", patient_row["Prediction"])
     with col_info2:
         st.metric("Risk Score", f"{patient_row['Risk Score']:.2%}")
@@ -450,9 +356,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
 
     with col_r:
         st.write(f"### Top 20 Marker Levels (Patient {selected_idx})")
-        # Exclude non-biomarker columns
-        exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
-        markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index])
+        markers = patient_row.drop(['Prediction', 'Risk Score'])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
                          color=top_20.values, color_continuous_scale='Viridis')
@@ -464,8 +368,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     st.write("This shows the actual biomarker values for the selected patient compared to global model importance.")
     
     # Get patient's top markers by value
-    exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
-    patient_markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index]).astype(float)
+    patient_markers = patient_row.drop(['Prediction', 'Risk Score']).astype(float)
     patient_top_markers = patient_markers.sort_values(ascending=False).head(15)
     
     # Create comparison dataframe
@@ -501,8 +404,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.plotly_chart(fig_global_imp, use_container_width=True, key=f"{key_prefix}_global_imp_{selected_idx}")
 
     with st.expander("View All Biomarker Values for This Patient"):
-        exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
-        patient_all_markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index]).to_frame(name='Value')
+        patient_all_markers = patient_row.drop(['Prediction', 'Risk Score']).to_frame(name='Value')
         patient_all_markers['Biomarker'] = patient_all_markers.index
         patient_all_markers = patient_all_markers[['Biomarker', 'Value']].sort_values('Value', ascending=False)
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
@@ -631,22 +533,6 @@ elif page == "Documentation":
         st.markdown("""
         ### Input Data Specifications
         
-        #### CSV File Format (Bulk Upload)
-        
-        **File Structure**
-        1. **First Row**: Column headers (biomarker names)
-        2. **First Column** (Optional): Patient IDs or sample identifiers
-           - Can contain text/alphanumeric values
-           - Common names: 'Patient_ID', 'ID', 'Sample_ID', 'Patient'
-        3. **Data Columns**: Biomarker values (must be numeric)
-        
-        **Example Structure:**
-```
-        Patient_ID,TP53_prot,EGFR_rna,PTEN_prot,...
-        P001,25.3,150.2,18.7,...
-        P002,12.5,98.3,22.1,...
-```
-        
         #### Biomarker Identifiers
         
         The model expects exactly **843 biomarkers** with specific naming conventions.
@@ -676,7 +562,7 @@ elif page == "Documentation":
         4. Units: μM, mM, or relative abundance
         5. Technology: Mass spectrometry, NMR spectroscopy
         
-        #### Value Requirements
+        #### Value Ranges
         
         **Data Type Requirements**
         1. Format: Continuous numeric (float or integer)
@@ -684,15 +570,21 @@ elif page == "Documentation":
         3. Range: Non-negative values (0 to ∞)
         4. Special values: 0.0 represents baseline/undetected
         
+        **Units Specification**
+        1. Raw laboratory values (model trained on non-normalized data)
+        2. Consistent units within each biomarker type
+        3. No log-transformation required
+        4. No z-score normalization needed
+        
         **Missing Data Handling**
         1. Enter `0.0` to represent baseline/undetected levels
-        2. Leave cells empty in CSV (will be automatically filled with 0.0)
+        2. Leave cells empty in CSV (will be filled with 0.0)
         3. Do not use NULL, NA, or text indicators
-        4. Missing markers are automatically filled and do not break the model
+        4. Missing markers are automatically filled with 0.0
         
-        #### Technical Specifications
+        #### CSV File Format (Bulk Upload)
         
-        **Header Row**
+        **Header Row Requirements**
         1. Must contain exact biomarker names matching model features
         2. No spaces or special characters except underscore
         3. Case-sensitive matching
@@ -703,21 +595,25 @@ elif page == "Documentation":
         2. No blank rows between records
         3. Maximum recommended: 1000 patients per file
         
-        **File Format**
+        **Technical Specifications**
         1. Delimiter: Comma (,)
         2. Quote character: Double quotes (") for text fields
         3. Encoding: UTF-8
         4. Line endings: Unix (LF) or Windows (CRLF)
         5. Maximum file size: 50 MB
         
-        #### Column Handling
+        **Column Handling Rules**
+        1. Extra columns automatically dropped during processing
+        2. Missing columns filled with 0.0 during alignment
+        3. Column order does not matter
         
-        **Automatic Processing**
-        1. First column detected as ID column if named: Patient_ID, ID, Sample_ID, etc.
-        2. Extra columns automatically dropped during processing
-        3. Missing biomarker columns filled with 0.0
-        4. Column order does not matter
-        5. Patient IDs preserved throughout analysis
+        #### Manual Entry Guidelines
+        
+        1. Prioritize top 12 high-influence markers shown by default
+        2. Use zero for unknowns (leave fields at 0.0 if data unavailable)
+        3. Check units (ensure values match training data scale)
+        4. Avoid text (only numeric inputs accepted)
+        5. Quality control (review values before submission)
         
         ### Template Generation
         
@@ -729,12 +625,10 @@ elif page == "Documentation":
         
         **Filling the Template**
         1. Open in spreadsheet software (Excel, Google Sheets, LibreOffice)
-        2. Optionally add a 'Patient_ID' column as the first column
-        3. One patient per row starting from row 2
-        4. Fill biomarker columns with numeric values
-        5. Leave unknown values as 0 or empty
-        6. Save as CSV format (not Excel .xlsx)
-        7. Upload via User Analysis interface
+        2. One patient per row starting from row 2
+        3. Fill columns with numeric values
+        4. Save as CSV format (not Excel .xlsx)
+        5. Upload via User Analysis interface
         
         ### Data Privacy & Security
         
@@ -752,14 +646,14 @@ elif page == "Documentation":
         
         **Best Practices**
         1. Remove patient names from CSV files
-        2. Use de-identified study IDs instead of medical record numbers
+        2. Use study IDs instead of medical record numbers
         3. Strip dates to month/year only
         4. Exclude geographic identifiers below state level
         5. Review data before upload
         """)
 
 # ============================================================================
-# USER ANALYSIS PAGE - WITH VALIDATION (HANDLES FIRST COLUMN AS ID)
+# USER ANALYSIS PAGE - WITH HEADER VALIDATION ONLY
 # ============================================================================
 elif page == "User Analysis":
     st.header("User Analysis")
@@ -801,34 +695,32 @@ elif page == "User Analysis":
         col_t1, col_t2 = st.columns([2, 1])
         with col_t2:
             st.write("### Download Template")
-            # Generate empty template with 843 columns (with optional Patient_ID column)
-            template_data = pd.DataFrame(columns=['Patient_ID'] + list(feature_names))
-            template_csv = template_data.to_csv(index=False).encode('utf-8')
+            # Generate empty template with 843 columns
+            template_csv = pd.DataFrame(columns=feature_names).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download CSV Template",
                 data=template_csv,
                 file_name="MultiNet_Patient_Template.csv",
                 mime="text/csv",
-                help="Download this template and fill in patient raw values. The 'Patient_ID' column is optional."
+                help="Download this template and fill in patient raw values."
             )
         
         with col_t1:
             st.write("### Upload Patient Data")
-            st.info("💡 Your CSV can optionally include a first column with Patient IDs (text/numbers). All biomarker columns must contain numeric values.")
             uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv", 
                                             help="Upload a CSV file with patient biomarker data")
         
-        # IMPORTANT: Validate BEFORE processing
+        # IMPORTANT: Validate headers BEFORE processing
         if uploaded_file is not None:
             try:
                 raw_df = pd.read_csv(uploaded_file)
                 
-                # Validate the uploaded data
-                is_valid, errors, warnings = validate_input_data(raw_df, feature_names)
+                # Validate only the headers
+                is_valid, errors = validate_headers(raw_df, feature_names)
                 
                 if not is_valid:
                     # Show errors
-                    st.error("**Data Validation Failed**")
+                    st.error("**Column Header Validation Failed**")
                     for error in errors:
                         st.error(error)
                     
@@ -839,39 +731,24 @@ elif page == "User Analysis":
                         
                         1. **Missing or incorrect headers:**
                            - Download the template using the button above
-                           - Ensure your biomarker column names exactly match the template
+                           - Ensure your column names exactly match the template
                            - Check for typos in biomarker names (case-sensitive)
-                           - First column can be 'Patient_ID' (optional)
+                           - Headers must include suffixes: '_prot', '_rna', or '_met'
                         
-                        2. **Non-numeric values in biomarker columns:**
-                           - All biomarker values must be numbers
-                           - Remove any text, symbols, or special characters from biomarker columns
-                           - Use 0 or 0.0 for missing values
-                           - Note: Patient ID column (first column) CAN contain text
-                        
-                        3. **File format issues:**
+                        2. **File format issues:**
                            - Save your file as CSV format (.csv)
                            - Use UTF-8 encoding
-                           - Avoid Excel formatting like formulas
+                           - Ensure the first row contains column headers
                         
                         **Need Help?**
                         - Navigate to Documentation → Data Requirements for detailed specifications
                         - Download and review the template file
-                        - Ensure your data follows the expected format
+                        - Ensure your column headers follow the expected naming convention
                         """)
                 
                 else:
-                    # Show success message
+                    # Headers are valid - proceed with processing
                     st.success(f"✅ File uploaded successfully! Found {len(raw_df)} patient(s).")
-                    
-                    # Show only informational warnings (not about missing biomarkers)
-                    if warnings:
-                        # Filter out warnings about missing biomarkers
-                        filtered_warnings = [w for w in warnings if not w.startswith("⚠️") or "biomarkers are missing" not in w]
-                        if filtered_warnings:
-                            with st.expander("ℹ️ Data Information (Click to view)"):
-                                for warning in filtered_warnings:
-                                    st.info(warning)
                     
                     # Process and show dashboard
                     b_results = process_data(raw_df)
@@ -1075,8 +952,7 @@ elif page == "Demo Walkthrough":
                     st.metric("Risk Score", f"{patient_row['Risk Score']:.1%}")
                 
                 st.write("### Patient's Biomarker Profile:")
-                exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
-                markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index])
+                markers = patient_row.drop(['Prediction', 'Risk Score'])
                 top_10 = markers.astype(float).sort_values(ascending=False).head(10)
                 
                 fig = px.bar(x=top_10.values, y=top_10.index, orientation='h',
