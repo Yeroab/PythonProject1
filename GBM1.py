@@ -370,7 +370,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("MultiNet_AI")
+st.sidebar.title("MOmics-AI")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Navigation",
@@ -378,7 +378,7 @@ page = st.sidebar.radio(
 )
 
 # --- MAIN INTERFACE ---
-st.title("MultiNet_AI | GBM Clinical Diagnostic Suite")
+st.title("MOmics-AI | GBM Clinical Diagnostic Suite")
 
 # ============================================================================
 # HOME PAGE
@@ -412,7 +412,7 @@ elif page == "Documentation":
         st.markdown("""
         ### Purpose & Scope
         
-        MultiNet_AI is a clinical decision support tool designed for glioblastoma patient risk stratification. 
+        MOmics-AI is a clinical decision support tool designed for glioblastoma patient risk stratification. 
         The system integrates multi-omics biomarker data to generate probability-based risk assessments, 
         helping clinicians identify high-risk patients who may benefit from aggressive treatment strategies.
         
