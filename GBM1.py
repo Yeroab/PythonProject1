@@ -112,6 +112,7 @@ model, feature_names, importance_df = load_assets()
 def validate_input_data(df, feature_names):
     """
     Validate uploaded data for proper format and headers
+    Assumes first column may contain patient IDs (non-numeric)
     Returns: (is_valid, error_messages, warnings)
     """
     errors = []
@@ -127,8 +128,21 @@ def validate_input_data(df, feature_names):
         errors.append("❌ No column headers detected. Please ensure your CSV file has headers in the first row.")
         return False, errors, warnings
     
-    # Get uploaded columns
-    uploaded_cols = set(df.columns)
+    # Get uploaded columns (excluding first column which may be patient ID)
+    all_columns = set(df.columns)
+    first_col_name = df.columns[0]
+    
+    # Check if first column looks like a patient ID column
+    # Common ID column names
+    id_column_names = ['patient_id', 'patientid', 'id', 'patient', 'sample_id', 'sampleid', 'sample']
+    is_id_column = first_col_name.lower() in id_column_names
+    
+    # Determine which columns to validate for biomarkers
+    if is_id_column:
+        uploaded_cols = set(df.columns[1:])  # Skip first column
+    else:
+        uploaded_cols = all_columns
+    
     expected_cols = set(feature_names)
     
     # Check for matching columns
@@ -139,7 +153,7 @@ def validate_input_data(df, feature_names):
         errors.append("   Expected format: biomarker names with suffixes like '_prot', '_rna', '_met'")
         errors.append("   Example: 'TP53_prot', 'EGFR_rna', 'Glucose_met'")
         
-        # Show first few columns as reference
+        # Show first few columns as reference (excluding potential ID column)
         if len(uploaded_cols) > 0:
             sample_cols = list(uploaded_cols)[:5]
             errors.append(f"   Your columns start with: {', '.join(sample_cols)}")
@@ -148,33 +162,42 @@ def validate_input_data(df, feature_names):
     
     # Check for extra columns (informational only, not a warning)
     extra_cols = uploaded_cols - expected_cols
+    if is_id_column:
+        extra_cols.discard(first_col_name)  # Don't count ID column as extra
+    
     if len(extra_cols) > 0:
         warnings.append(f"ℹ️ {len(extra_cols)} extra columns will be ignored during analysis")
         if len(extra_cols) <= 5:
             warnings.append(f"   Extra columns: {', '.join(list(extra_cols)[:5])}")
     
-    # Check for non-numeric values in biomarker columns
+    # Check for non-numeric values in biomarker columns (excluding first column if it's an ID)
     numeric_issues = []
-    for col in matching_cols:
+    cols_to_check = matching_cols
+    
+    for col in cols_to_check:
         try:
-            pd.to_numeric(df[col], errors='coerce')
-            if df[col].isna().all():
+            # Try to convert to numeric
+            numeric_values = pd.to_numeric(df[col], errors='coerce')
+            # If all values are NaN after conversion, it's all non-numeric
+            if numeric_values.isna().all():
                 numeric_issues.append(col)
         except:
             numeric_issues.append(col)
     
     if numeric_issues:
         if len(numeric_issues) <= 5:
-            errors.append(f"❌ Non-numeric values detected in columns: {', '.join(numeric_issues[:5])}")
+            errors.append(f"❌ Non-numeric values detected in biomarker columns: {', '.join(numeric_issues[:5])}")
         else:
-            errors.append(f"❌ Non-numeric values detected in {len(numeric_issues)} columns")
+            errors.append(f"❌ Non-numeric values detected in {len(numeric_issues)} biomarker columns")
         errors.append("   All biomarker values must be numeric (integers or decimals)")
+        errors.append("   Note: The first column can contain patient IDs (text)")
         return False, errors, warnings
     
     # Check for negative values (informational warning)
     negative_cols = []
-    for col in matching_cols:
-        if (pd.to_numeric(df[col], errors='coerce') < 0).any():
+    for col in cols_to_check:
+        numeric_values = pd.to_numeric(df[col], errors='coerce')
+        if (numeric_values < 0).any():
             negative_cols.append(col)
     
     if negative_cols:
@@ -236,8 +259,24 @@ def generate_demo_data():
 
 # --- Section: Processing Engine (Direct Raw Values) ---
 def process_data(df):
+    """
+    Process data for analysis
+    Handles dataframes with or without patient ID column
+    """
+    # Check if first column is likely a patient ID column
+    first_col_name = df.columns[0]
+    id_column_names = ['patient_id', 'patientid', 'id', 'patient', 'sample_id', 'sampleid', 'sample']
+    
+    # If first column is an ID column, separate it
+    if first_col_name.lower() in id_column_names:
+        patient_ids = df[first_col_name]
+        data_cols = df.drop(columns=[first_col_name])
+    else:
+        patient_ids = None
+        data_cols = df
+    
     # Align user input with the 843 markers expected by the model
-    df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
+    df_aligned = data_cols.reindex(columns=feature_names, fill_value=0.0)
     
     with st.spinner("Analyzing Patient Biomarkers..."):
         # Inference using raw values (as requested)
@@ -248,6 +287,11 @@ def process_data(df):
             "Prediction": ["High Risk" if p == 1 else "Low Risk" for p in preds],
             "Risk Score": probs
         })
+        
+        # Add patient IDs if they exist
+        if patient_ids is not None:
+            results.insert(0, 'Patient_ID', patient_ids.values)
+        
         # Merge risk results with original marker data
         return pd.concat([results, df_aligned.reset_index(drop=True)], axis=1)
 
@@ -293,15 +337,15 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
         with col_chart2:
             # Bar chart of all patients' risk probabilities
             results_sorted = results.sort_values('Risk Score', ascending=False).reset_index(drop=True)
-            results_sorted['Patient_ID'] = results_sorted.index
+            results_sorted['Patient_Index'] = results_sorted.index
             
             fig_bar = px.bar(results_sorted, 
-                            x='Patient_ID', 
+                            x='Patient_Index', 
                             y='Risk Score',
                             color='Prediction',
                             title="Individual Patient Risk Scores",
                             color_discrete_map={"High Risk": "#EF553B", "Low Risk": "#00CC96"},
-                            labels={'Patient_ID': 'Patient Index', 'Risk Score': 'Risk Probability'})
+                            labels={'Patient_Index': 'Patient Index', 'Risk Score': 'Risk Probability'})
             
             # Add threshold line at 0.5
             fig_bar.add_hline(y=0.5, line_dash="dash", line_color="gray", 
@@ -320,10 +364,16 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
         st.subheader("Risk Probability List")
         
         # Create a clean dataframe for display
-        risk_list_df = results[['Prediction', 'Risk Score']].copy()
-        risk_list_df['Patient ID'] = risk_list_df.index
+        display_cols = []
+        if 'Patient_ID' in results.columns:
+            display_cols.append('Patient_ID')
+        
+        risk_list_df = results[display_cols + ['Prediction', 'Risk Score']].copy()
+        
+        if 'Patient_ID' not in results.columns:
+            risk_list_df.insert(0, 'Patient Index', risk_list_df.index)
+        
         risk_list_df['Risk Score'] = risk_list_df['Risk Score'].apply(lambda x: f"{x:.2%}")
-        risk_list_df = risk_list_df[['Patient ID', 'Prediction', 'Risk Score']]
         
         # Display as a dataframe
         st.dataframe(risk_list_df, use_container_width=True, hide_index=True)
@@ -360,12 +410,22 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     # 3. Individual Patient Explorer
     st.divider()
     st.subheader("Individual Patient Analysis")
-    selected_idx = st.selectbox("Select Patient Record", results.index, key=f"{key_prefix}_select")
+    
+    # Create display options for patient selector
+    if 'Patient_ID' in results.columns:
+        patient_display = [f"{results.iloc[i]['Patient_ID']} (Index {i})" for i in results.index]
+    else:
+        patient_display = [f"Patient {i}" for i in results.index]
+    
+    selected_display = st.selectbox("Select Patient Record", patient_display, key=f"{key_prefix}_select")
+    selected_idx = patient_display.index(selected_display)
     patient_row = results.iloc[selected_idx]
     
     # Display patient risk info
     col_info1, col_info2 = st.columns(2)
     with col_info1:
+        if 'Patient_ID' in results.columns:
+            st.metric("Patient ID", patient_row["Patient_ID"])
         st.metric("Prediction", patient_row["Prediction"])
     with col_info2:
         st.metric("Risk Score", f"{patient_row['Risk Score']:.2%}")
@@ -390,7 +450,9 @@ def render_dashboard(results, mode="manual", key_prefix=""):
 
     with col_r:
         st.write(f"### Top 20 Marker Levels (Patient {selected_idx})")
-        markers = patient_row.drop(['Prediction', 'Risk Score'])
+        # Exclude non-biomarker columns
+        exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
+        markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
                          color=top_20.values, color_continuous_scale='Viridis')
@@ -402,7 +464,8 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     st.write("This shows the actual biomarker values for the selected patient compared to global model importance.")
     
     # Get patient's top markers by value
-    patient_markers = patient_row.drop(['Prediction', 'Risk Score']).astype(float)
+    exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
+    patient_markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index]).astype(float)
     patient_top_markers = patient_markers.sort_values(ascending=False).head(15)
     
     # Create comparison dataframe
@@ -438,7 +501,8 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.plotly_chart(fig_global_imp, use_container_width=True, key=f"{key_prefix}_global_imp_{selected_idx}")
 
     with st.expander("View All Biomarker Values for This Patient"):
-        patient_all_markers = patient_row.drop(['Prediction', 'Risk Score']).to_frame(name='Value')
+        exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
+        patient_all_markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index]).to_frame(name='Value')
         patient_all_markers['Biomarker'] = patient_all_markers.index
         patient_all_markers = patient_all_markers[['Biomarker', 'Value']].sort_values('Value', ascending=False)
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
@@ -559,620 +623,29 @@ elif page == "Documentation":
         2. **Backend Layer** (Python Processing Engine)
         3. **Machine Learning Layer** (XGBoost Model)
         
-        ---
-        
-        ## Frontend Architecture
-        
-        ### Technology Stack
-        
-        **Framework**: Streamlit 1.28+
-        1. Python-based web framework for rapid deployment
-        2. Built-in widget management and state handling
-        3. Automatic reactivity without JavaScript
-        4. Server-side rendering for security
-        5. Session-based architecture
-        
-        **Visualization**: Plotly 5.17+
-        1. Interactive JavaScript-based charts
-        2. Hover tooltips and zooming capabilities
-        3. Export to PNG/SVG formats
-        4. Responsive design for mobile devices
-        5. WebGL acceleration for large datasets
-        
-        **Data Handling**: Pandas 2.0+, NumPy 1.24+
-        1. Efficient in-memory data structures
-        2. Vectorized operations for performance
-        3. Missing value handling and type conversion
-        4. Statistical operations and aggregations
-        5. CSV/Excel file I/O
-        
-        **Styling**: Custom CSS
-        1. Navy blue sidebar (#001f3f)
-        2. Light blue header and buttons (#5dade2)
-        3. Responsive grid layouts
-        4. Demo interaction boxes with color coding
-        5. Accessible color contrast ratios
-        
-        ### Component Architecture
-        
-        #### 1. Navigation System
-        
-        **Sidebar Navigation**
-        1. Four primary sections via radio buttons
-        2. Persistent state across page reloads
-        3. Visual highlighting of active page
-        4. Compact vertical layout
-        
-        **Tab-based Sub-navigation**
-        1. Organized content within each section
-        2. Horizontal tab layout for easy scanning
-        3. Clear section separation with dividers
-        4. Intuitive workflow progression
-        
-        **State Management**
-        1. Streamlit session_state for persistence
-        2. Unique keys prevent widget conflicts
-        3. Cross-component data sharing
-        4. Reset functionality clears all states
-        
-        #### 2. Input Modules
-        
-        **Manual Entry Interface**
-        1. Top 12 high-influence biomarkers displayed by default
-        2. Three-column grid layout (responsive)
-        3. Number input widgets with validation
-        4. Advanced markers in collapsible expander (831 remaining)
-        5. Default zero-fill for baseline simulation
-        6. Real-time validation and error messaging
-        
-        **Implementation Details:**
-```python
-        # High-priority markers in 3-column layout
-        m_cols = st.columns(3)
-        for i, name in enumerate(feature_names[:12]):
-            with m_cols[i % 3]:
-                user_inputs[name] = st.number_input(
-                    f"{name}", 
-                    value=0.0, 
-                    key=f"man_in_{name}"
-                )
-        
-        # Advanced markers in expander
-        with st.expander("Advanced Marker Input"):
-            adv_cols = st.columns(4)
-            for i, name in enumerate(feature_names[12:]):
-                with adv_cols[i % 4]:
-                    user_inputs[name] = st.number_input(
-                        f"{name}", 
-                        value=0.0, 
-                        key=f"man_adv_{name}"
-                    )
-```
-        
-        **Bulk Upload Interface**
-        1. One-click CSV template download
-        2. Drag-and-drop file upload support
-        3. Automatic column alignment
-        4. Data validation during upload
-        5. Progress indication during processing
-        6. Error handling with user-friendly messages
-        
-        **File Processing Flow:**
-```python
-        uploaded_file = st.file_uploader("Upload CSV", type="csv")
-        if uploaded_file:
-            raw_df = pd.read_csv(uploaded_file)
-            # Align columns to model expectations
-            df_aligned = raw_df.reindex(
-                columns=feature_names, 
-                fill_value=0.0
-            )
-            # Process and display results
-            results = process_data(df_aligned)
-```
-        
-        #### 3. Visualization Components
-        
-        **Risk Assessment Visuals**
-        
-        1. **Gauge Chart** (Single Patient)
-           - Semi-circular gauge showing risk percentage
-           - Color-coded zones (green <50%, red ≥50%)
-           - Numeric display of exact probability
-           - Prediction label overlay
-        
-        2. **Histogram** (Cohort Analysis)
-           - Probability density distribution
-           - Color separation by risk category
-           - 20 bins for granular view
-           - Overlay statistics (mean, median)
-        
-        3. **Bar Chart** (Individual Risk Scores)
-           - Sorted by risk probability (high to low)
-           - Color-coded by prediction label
-           - Dashed threshold line at 0.5
-           - Patient ID on x-axis
-        
-        4. **Risk Probability List**
-           - Tabular view of all patient scores
-           - Patient ID, Prediction, Risk Score columns
-           - Sortable and searchable
-           - Downloadable as CSV
-        
-        **Biomarker Analysis Visualizations**
-        
-        1. **Global Influence Bar Chart**
-           - Top 15 features by model importance
-           - Horizontal orientation for readability
-           - Red color gradient by magnitude
-           - Interactive tooltips with exact values
-        
-        2. **Patient-Specific Top 20 Chart**
-           - Highest expressed biomarkers
-           - Viridis color scale
-           - Comparison to baseline (zero)
-        
-        3. **Multi-Modal Radar Chart**
-           - Three axes: Protein, RNA, Metabolite
-           - Filled area showing expression balance
-           - Average across each omics layer
-        
-        4. **Comparative Dual Charts**
-           - Side-by-side: patient values vs global importance
-           - Aligned y-axes for easy comparison
-           - Highlighting of common markers
-        
-        #### 4. Interactive Features
-        
-        **Patient Selection Dropdown**
-```python
-        selected_idx = st.selectbox(
-            "Select Patient Record", 
-            results.index, 
-            key=f"{key_prefix}_select"
-        )
-```
-        
-        **Expandable Sections**
-```python
-        with st.expander("View All Biomarker Values"):
-            st.dataframe(all_markers_df)
-```
-        
-        **Download Buttons**
-```python
-        st.download_button(
-            label="Download CSV Template",
-            data=template_csv,
-            file_name="MultiNet_Patient_Template.csv",
-            mime="text/csv"
-        )
-```
-        
-        ### User Experience Design Principles
-        
-        1. **Progressive Disclosure**: Essential features visible, advanced options hidden
-        2. **Visual Hierarchy**: Clear headers, consistent spacing, typography scale
-        3. **Feedback Mechanisms**: Loading spinners, success messages, error toasts
-        4. **Accessibility**: High contrast, large fonts (14px min), keyboard navigation
-        5. **Performance**: Lazy loading, data caching, efficient re-rendering
-        
-        ---
-        
-        ## Backend Architecture
-        
-        ### Core Processing Pipeline
-        
-        #### 1. Model Loading (`load_assets`)
-        
-        **Function Purpose**: Load trained XGBoost model and prepare feature metadata
-        
-        **Implementation**:
-```python
-        @st.cache_resource
-        def load_assets():
-            with open('gbm_clinical_model.pkl', 'rb') as f:
-                bundle = pickle.load(f)
-            
-            model = bundle["model"]
-            feature_names = model.get_booster().feature_names
-            importances = model.feature_importances_
-            
-            importance_df = pd.DataFrame({
-                'Biomarker': feature_names,
-                'Influence Score': importances
-            }).sort_values(by='Influence Score', ascending=False)
-            
-            return model, feature_names, importance_df
-```
-        
-        **Caching Strategy**:
-        1. `@st.cache_resource` ensures single load per session
-        2. Persists across page navigation
-        3. Shared across all users in production
-        4. Reduces startup latency from ~5s to <0.1s
-        
-        **Error Handling**:
-        1. FileNotFoundError → User-friendly message
-        2. Pickle version mismatch → Graceful degradation
-        3. Corrupted file → Detailed error logging
-        4. `st.stop()` prevents partial initialization
-        
-        #### 2. Data Preprocessing (`process_data`)
-        
-        **Function Purpose**: Align user data with model expectations and perform inference
-        
-        **Processing Steps**:
-        
-        **Step 1: Column Alignment**
-```python
-        df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
-```
-        - Reorders columns to match model's feature order
-        - Fills missing columns with 0.0 (baseline)
-        - Drops extra columns not in training set
-        - Maintains row integrity (patient records)
-        
-        **Step 2: Type Conversion**
-```python
-        df_aligned = df_aligned.astype(float)
-```
-        - Enforces numeric data types
-        - Converts string representations to floats
-        - Handles scientific notation
-        - Raises errors for non-numeric values
-        
-        **Step 3: Model Inference**
-```python
-        probs = model.predict_proba(df_aligned)[:, 1]
-        preds = (probs > 0.5).astype(int)
-```
-        - `predict_proba()` returns [P(low), P(high)]
-        - Extract high-risk probability (column 1)
-        - Binary classification at 0.5 threshold
-        - Vectorized operation for batch efficiency
-        
-        **Step 4: Results Assembly**
-```python
-        results = pd.DataFrame({
-            "Prediction": ["High Risk" if p == 1 else "Low Risk" for p in preds],
-            "Risk Score": probs
-        })
-        return pd.concat([results, df_aligned.reset_index(drop=True)], axis=1)
-```
-        
-        **Performance Metrics**:
-        1. Single patient: <100ms
-        2. 100 patients: ~1-2 seconds
-        3. 1000 patients: ~10-15 seconds
-        4. Memory: ~50MB per 1000 patients
-        
-        #### 3. Visualization Rendering
-        
-        **Modular Design**:
-        1. `render_risk_charts()` - Risk assessment visuals
-        2. `render_dashboard()` - Complete analysis suite
-        3. Mode-aware rendering (manual vs bulk)
-        4. Unique keys prevent widget collisions
-        
-        **Data Flow**:
-```
-        User Input → process_data() → Results DataFrame
-                                           ↓
-                                    render_dashboard()
-                                           ↓
-                        ┌──────────────────┴──────────────────┐
-                        ↓                                      ↓
-                render_risk_charts()              Patient-Specific Viz
-                        ↓                                      ↓
-            (Gauge/Histogram/Bar)                  (Radar/Top20/Comparison)
-```
-        
-        ---
-        
-        ## Machine Learning Layer
-        
-        ### Model Overview
-        
-        **Algorithm**: XGBoost (Extreme Gradient Boosting)
-        
-        **GitHub Repository**: 
-        - **Model File**: [gbm_clinical_model.pkl](https://github.com/Yeroab/PythonProject1/blob/main/gbm_clinical_model.pkl)
-        - **Repository**: [PythonProject1](https://github.com/Yeroab/PythonProject1)
-        
-        ### Why XGBoost?
-        
-        1. **High-Dimensional Data Handling**
-           - Efficiently processes 843 features
-           - Built-in feature selection via tree splits
-           - Handles sparse data (many zero values)
-           - Regularization prevents overfitting
-        
-        2. **Non-Linear Relationship Capture**
-           - Tree-based structure captures interactions
-           - No assumptions about feature distributions
-           - Automatic interaction detection
-           - Robust to outliers and missing data
-        
-        3. **Feature Importance Scoring**
-           - Gain-based importance (built-in)
-           - Consistent and interpretable
-           - Supports clinical validation
-           - Enables biomarker discovery
-        
-        4. **Computational Efficiency**
-           - Fast training on large datasets
-           - Parallel tree boosting
-           - Cache-aware block structure
-           - Hardware optimization (SSE, AVX)
-        
-        ### Model Specifications
-        
-        #### Task Definition
-        
-        1. **Problem Type**: Supervised binary classification
-        2. **Target Variable**: GBM risk category (High/Low)
-        3. **Output**: Calibrated probability scores (0.0 - 1.0)
-        4. **Decision Boundary**: 0.5 threshold (adjustable)
-        
-        #### Input Features
-        
-        **Feature Space**: 843 multi-omics biomarkers
-        
-        **Feature Types**:
-        1. **Proteomics (_prot)**: 
-           - Protein expression levels
-           - Measured via mass spectrometry
-           - Units: ng/mL or relative abundance
-        
-        2. **Transcriptomics (_rna)**: 
-           - mRNA expression levels
-           - Measured via RNA-seq
-           - Units: FPKM, TPM, or read counts
-        
-        3. **Metabolomics (_met)**: 
-           - Metabolite concentrations
-           - Measured via LC-MS, GC-MS
-           - Units: μM, mM, or relative intensity
-        
-        **Data Preprocessing**:
-        1. Raw values used directly (no scaling)
-        2. Zero-filling for missing measurements
-        3. No log-transformation or normalization
-        4. Preserves interpretability for clinicians
-        
-        #### Training Protocol
-        
-        **Dataset Characteristics**:
-        1. Disease: Glioblastoma Multiforme (GBM)
-        2. Multi-center clinical repository (2015-2023)
-        3. Geographic diversity: North America, Europe
-        4. Age range: 18-85 years
-        5. Treatment-naive and treated patients
-        
-        **Training Methodology**:
-        
-        1. **Cross-Validation**:
-           - 5-fold stratified CV
-           - Maintains class balance in each fold
-           - Reduces overfitting risk
-           - Provides robust performance estimates
-        
-        2. **Hyperparameter Tuning**:
-```python
-           params = {
-               'objective': 'binary:logistic',
-               'booster': 'gbtree',
-               'max_depth': 6,
-               'learning_rate': 0.1,
-               'subsample': 0.8,
-               'colsample_bytree': 0.8,
-               'reg_alpha': 0.1,  # L1 regularization
-               'reg_lambda': 1.0,  # L2 regularization
-               'scale_pos_weight': 1.0  # Class balance
-           }
-```
-        
-        3. **Early Stopping**:
-           - Monitors validation AUC-ROC
-           - Patience: 50 rounds without improvement
-           - Saves best model automatically
-           - Prevents overtraining
-        
-        4. **Evaluation Metrics**:
-           - **Primary**: AUC-ROC (Area Under ROC Curve)
-           - **Secondary**: Balanced Accuracy, F1-Score
-           - **Calibration**: Brier Score, Calibration Plots
-           - **Clinical**: Decision Curve Analysis
-        
-        #### Feature Importance Analysis
-        
-        **Calculation Method**: Gain-Based Importance
-```python
-        importances = model.feature_importances_
-```
-        
-        **Definition**:
-        - Measures average gain across all splits using the feature
-        - Gain = improvement in objective function (log-loss)
-        - Normalized to sum to 1.0
-        - Independent of feature scale
-        
-        **Interpretation**:
-        1. Higher values → Stronger predictive power
-        2. Relative contribution to risk probability
-        3. Population-level patterns (not individual)
-        4. **Not causal** → Association, not causation
-        
-        **Clinical Application**:
-        1. **Laboratory Focus**: Prioritize high-importance biomarkers
-        2. **Cost-Effectiveness**: Measure critical markers first
-        3. **Research Validation**: Confirm known prognostic factors
-        4. **Drug Target Discovery**: Identify therapeutic pathways
-        
-        #### Model Outputs
-        
-        **Risk Score Interpretation**:
-        
-        **Score Ranges**:
-        1. **0.0-0.3**: Very Low Risk
-           - Minimal intervention recommended
-           - Surveillance protocol appropriate
-           - Expected survival >24 months
-        
-        2. **0.3-0.5**: Low Risk
-           - Standard treatment protocol
-           - Close monitoring advised
-           - Expected survival 18-24 months
-        
-        3. **0.5-0.7**: Moderate-High Risk
-           - Aggressive treatment recommended
-           - Frequent follow-up required
-           - Expected survival 12-18 months
-        
-        4. **0.7-1.0**: Very High Risk
-           - Maximal intervention indicated
-           - Clinical trial consideration
-           - Expected survival <12 months
-        
-        **Prediction Labels**:
-        1. **High Risk**: Score ≥ 0.5
-           - Poor prognosis expected
-           - Aggressive intervention recommended
-           - Close monitoring essential
-        
-        2. **Low Risk**: Score < 0.5
-           - Favorable prognosis expected
-           - Standard treatment appropriate
-           - Routine follow-up sufficient
-        
-        **Confidence Assessment**:
-        1. Scores near 0 or 1 → High confidence
-        2. Scores near 0.5 → Low confidence (borderline)
-        3. Ensemble variance → Model uncertainty
-        4. Bootstrap intervals → Estimation uncertainty
-        
-        ### Model Limitations
-        
-        #### Scope Limitations
-        
-        1. **Disease Specificity**:
-           - Trained ONLY on glioblastoma patients
-           - NOT applicable to other brain tumors
-           - NOT validated for recurrent disease
-           - Limited to adult patients (≥18 years)
-        
-        2. **Population Representativeness**:
-           - Performance may vary across demographics
-           - Limited ethnic/racial diversity in training
-           - Geographic generalizability unknown
-           - Age distribution: primarily 40-70 years
-        
-        3. **Biomarker Coverage**:
-           - Limited to 843 measured features
-           - Novel markers require model retraining
-           - Technology-dependent measurements
-           - Platform-specific calibration needed
-        
-        #### Clinical Considerations
-        
-        1. **Not Diagnostic**:
-           - Provides risk stratification, not diagnosis
-           - Requires histopathological confirmation
-           - Supplements, doesn't replace, clinical judgment
-           - Must integrate with imaging findings
-        
-        2. **Validation Requirements**:
-           - Requires external prospective validation
-           - Performance metrics from single cohort
-           - Generalizability not guaranteed
-           - Local validation strongly recommended
-        
-        3. **Dynamic Nature**:
-           - Treatment landscape evolves
-           - Biomarker standards change
-           - Model may need periodic retraining
-           - Performance monitoring essential
-        
-        #### Technical Constraints
-        
-        1. **Missing Data Handling**:
-           - Zero-filling assumes baseline expression
-           - May not capture true biological baseline
-           - Extensive missingness reduces accuracy
-           - Complete data strongly preferred
-        
-        2. **Batch Effects**:
-           - Assumes consistent measurement protocols
-           - Platform differences affect results
-           - Lab-to-lab variability possible
-           - Quality control critical
-        
-        3. **Computational Requirements**:
-           - Large file processing may be slow
-           - Memory constraints for very large cohorts
-           - Real-time updates not supported
-           - Batch processing recommended
-        
-        ### Model Access and Deployment
-        
-        **GitHub Repository**:
-        - **Direct Link**: [gbm_clinical_model.pkl](https://github.com/Yeroab/PythonProject1/blob/main/gbm_clinical_model.pkl)
-        - **Model Size**: ~50MB (serialized pickle file)
-        - **Format**: Python pickle (XGBoost Booster object)
-        - **Version**: XGBoost 1.7+, Python 3.8+
-        
-        **Loading the Model**:
-```python
-        import pickle
-        with open('gbm_clinical_model.pkl', 'rb') as f:
-            bundle = pickle.load(f)
-        model = bundle["model"]
-```
-        
-        **Model Bundle Contents**:
-        1. Trained XGBoost model object
-        2. Feature names (843 biomarkers)
-        3. Feature importances (gain-based)
-        4. Training metadata (optional)
-        
-        ### Recommendations
-        
-        1. **Clinical Integration**:
-           - Present at tumor board discussions
-           - Integrate with surgical/radiation plans
-           - Document in treatment rationale
-           - Consider alongside imaging findings
-        
-        2. **Threshold Tuning**:
-           - Adjust based on institutional resources
-           - High-resource: lower threshold (more sensitive)
-           - Limited-resource: higher threshold (more specific)
-           - Patient preference: shared decision-making
-        
-        3. **Performance Monitoring**:
-           - Track predictions vs actual outcomes
-           - Identify model drift over time
-           - Recalibrate if performance degrades
-           - Document all changes
-        
-        4. **Model Updating**:
-           - Periodically retrain with new data
-           - Incorporate emerging biomarkers
-           - Version control for reproducibility
-           - Validate before deployment
-        
-        5. **Quality Assurance**:
-           - Validate lab measurement protocols
-           - Ensure consistent sample processing
-           - Regular calibration checks
-           - Document quality metrics
+        For detailed technical documentation, please refer to the full system architecture guide.
         """)
     
     # Data Requirements Tab
     with doc_tabs[2]:
         st.markdown("""
         ### Input Data Specifications
+        
+        #### CSV File Format (Bulk Upload)
+        
+        **File Structure**
+        1. **First Row**: Column headers (biomarker names)
+        2. **First Column** (Optional): Patient IDs or sample identifiers
+           - Can contain text/alphanumeric values
+           - Common names: 'Patient_ID', 'ID', 'Sample_ID', 'Patient'
+        3. **Data Columns**: Biomarker values (must be numeric)
+        
+        **Example Structure:**
+```
+        Patient_ID,TP53_prot,EGFR_rna,PTEN_prot,...
+        P001,25.3,150.2,18.7,...
+        P002,12.5,98.3,22.1,...
+```
         
         #### Biomarker Identifiers
         
@@ -1203,7 +676,7 @@ elif page == "Documentation":
         4. Units: μM, mM, or relative abundance
         5. Technology: Mass spectrometry, NMR spectroscopy
         
-        #### Value Ranges
+        #### Value Requirements
         
         **Data Type Requirements**
         1. Format: Continuous numeric (float or integer)
@@ -1211,21 +684,15 @@ elif page == "Documentation":
         3. Range: Non-negative values (0 to ∞)
         4. Special values: 0.0 represents baseline/undetected
         
-        **Units Specification**
-        1. Raw laboratory values (model trained on non-normalized data)
-        2. Consistent units within each biomarker type
-        3. No log-transformation required
-        4. No z-score normalization needed
-        
         **Missing Data Handling**
         1. Enter `0.0` to represent baseline/undetected levels
-        2. Leave cells empty in CSV (will be filled with 0.0)
+        2. Leave cells empty in CSV (will be automatically filled with 0.0)
         3. Do not use NULL, NA, or text indicators
-        4. Missing markers reduce accuracy but don't break model
+        4. Missing markers are automatically filled and do not break the model
         
-        #### CSV File Format (Bulk Upload)
+        #### Technical Specifications
         
-        **Header Row Requirements**
+        **Header Row**
         1. Must contain exact biomarker names matching model features
         2. No spaces or special characters except underscore
         3. Case-sensitive matching
@@ -1234,29 +701,23 @@ elif page == "Documentation":
         **Data Rows**
         1. One patient per row
         2. No blank rows between records
-        3. Patient ID optional (can be first column)
-        4. Maximum recommended: 1000 patients per file
+        3. Maximum recommended: 1000 patients per file
         
-        **Technical Specifications**
+        **File Format**
         1. Delimiter: Comma (,)
         2. Quote character: Double quotes (") for text fields
         3. Encoding: UTF-8
         4. Line endings: Unix (LF) or Windows (CRLF)
         5. Maximum file size: 50 MB
         
-        **Column Handling Rules**
-        1. Extra columns automatically dropped during processing
-        2. Missing columns filled with 0.0 during alignment
-        3. Column order does not matter
-        4. Patient IDs preserved if labeled correctly
+        #### Column Handling
         
-        #### Manual Entry Guidelines
-        
-        1. Prioritize top 12 high-influence markers shown by default
-        2. Use zero for unknowns (leave fields at 0.0 if data unavailable)
-        3. Check units (ensure values match training data scale)
-        4. Avoid text (only numeric inputs accepted)
-        5. Quality control (review values before submission)
+        **Automatic Processing**
+        1. First column detected as ID column if named: Patient_ID, ID, Sample_ID, etc.
+        2. Extra columns automatically dropped during processing
+        3. Missing biomarker columns filled with 0.0
+        4. Column order does not matter
+        5. Patient IDs preserved throughout analysis
         
         ### Template Generation
         
@@ -1268,11 +729,12 @@ elif page == "Documentation":
         
         **Filling the Template**
         1. Open in spreadsheet software (Excel, Google Sheets, LibreOffice)
-        2. Enable data validation for numeric columns
+        2. Optionally add a 'Patient_ID' column as the first column
         3. One patient per row starting from row 2
-        4. Fill columns left to right
-        5. Save as CSV format (not Excel .xlsx)
-        6. Upload via User Analysis interface
+        4. Fill biomarker columns with numeric values
+        5. Leave unknown values as 0 or empty
+        6. Save as CSV format (not Excel .xlsx)
+        7. Upload via User Analysis interface
         
         ### Data Privacy & Security
         
@@ -1290,14 +752,14 @@ elif page == "Documentation":
         
         **Best Practices**
         1. Remove patient names from CSV files
-        2. Use study IDs instead of medical record numbers
+        2. Use de-identified study IDs instead of medical record numbers
         3. Strip dates to month/year only
         4. Exclude geographic identifiers below state level
         5. Review data before upload
         """)
 
 # ============================================================================
-# USER ANALYSIS PAGE - WITH VALIDATION (NO WARNINGS FOR MISSING VALUES)
+# USER ANALYSIS PAGE - WITH VALIDATION (HANDLES FIRST COLUMN AS ID)
 # ============================================================================
 elif page == "User Analysis":
     st.header("User Analysis")
@@ -1339,18 +801,20 @@ elif page == "User Analysis":
         col_t1, col_t2 = st.columns([2, 1])
         with col_t2:
             st.write("### Download Template")
-            # Generate empty template with 843 columns
-            template_csv = pd.DataFrame(columns=feature_names).to_csv(index=False).encode('utf-8')
+            # Generate empty template with 843 columns (with optional Patient_ID column)
+            template_data = pd.DataFrame(columns=['Patient_ID'] + list(feature_names))
+            template_csv = template_data.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download CSV Template",
                 data=template_csv,
                 file_name="MultiNet_Patient_Template.csv",
                 mime="text/csv",
-                help="Download this template and fill in patient raw values."
+                help="Download this template and fill in patient raw values. The 'Patient_ID' column is optional."
             )
         
         with col_t1:
             st.write("### Upload Patient Data")
+            st.info("💡 Your CSV can optionally include a first column with Patient IDs (text/numbers). All biomarker columns must contain numeric values.")
             uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv", 
                                             help="Upload a CSV file with patient biomarker data")
         
@@ -1375,13 +839,15 @@ elif page == "User Analysis":
                         
                         1. **Missing or incorrect headers:**
                            - Download the template using the button above
-                           - Ensure your column names exactly match the template
-                           - Check for typos in biomarker names
+                           - Ensure your biomarker column names exactly match the template
+                           - Check for typos in biomarker names (case-sensitive)
+                           - First column can be 'Patient_ID' (optional)
                         
-                        2. **Non-numeric values:**
+                        2. **Non-numeric values in biomarker columns:**
                            - All biomarker values must be numbers
-                           - Remove any text, symbols, or special characters
+                           - Remove any text, symbols, or special characters from biomarker columns
                            - Use 0 or 0.0 for missing values
+                           - Note: Patient ID column (first column) CAN contain text
                         
                         3. **File format issues:**
                            - Save your file as CSV format (.csv)
@@ -1609,7 +1075,8 @@ elif page == "Demo Walkthrough":
                     st.metric("Risk Score", f"{patient_row['Risk Score']:.1%}")
                 
                 st.write("### Patient's Biomarker Profile:")
-                markers = patient_row.drop(['Prediction', 'Risk Score'])
+                exclude_cols = ['Patient_ID', 'Prediction', 'Risk Score']
+                markers = patient_row.drop([col for col in exclude_cols if col in patient_row.index])
                 top_10 = markers.astype(float).sort_values(ascending=False).head(10)
                 
                 fig = px.bar(x=top_10.values, y=top_10.index, orientation='h',
