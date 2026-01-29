@@ -1358,7 +1358,7 @@ elif page == "Demo Walkthrough":
             st.markdown("---")
             
             # Process the demo data
-            with st.spinner("🔬 Analyzing biomarkers..."):
+            with st.spinner(" Analyzing biomarkers..."):
                 demo_results = process_data(demo_data)
             
             st.success(" Analysis Complete!")
@@ -1391,7 +1391,7 @@ elif page == "Demo Walkthrough":
             </div>
             """, unsafe_allow_html=True)
             
-            st.info("💡 Tip: Use the patient selector dropdown to compare the three different risk profiles")
+            st.info(" Tip: Use the patient selector dropdown to compare the three different risk profiles")
     
     # MODE 2: GUIDED TUTORIAL
     elif demo_mode == "Guided Tutorial":
@@ -1539,7 +1539,7 @@ elif page == "Demo Walkthrough":
             
             # IMPORTANT: Results ONLY shown after button click
             if st.button("Load & Analyze Sample Data", key="explore_analyze", type="primary"):
-                with st.spinner("🔬 Analyzing sample data..."):
+                with st.spinner(" Analyzing sample data..."):
                     demo_results = process_data(demo_data)
                 st.success(" Sample data analyzed successfully!")
                 st.divider()
