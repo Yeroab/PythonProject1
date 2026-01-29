@@ -479,7 +479,7 @@ elif page == "Documentation":
         st.markdown("""
         ### System Architecture Overview
         
-        MultiNet_AI follows a three-tier architecture consisting of:
+        MOmics-AI follows a three-tier architecture consisting of:
         
         1. **Frontend Layer** (Streamlit-based User Interface)
         2. **Backend Layer** (Python Processing Engine)
