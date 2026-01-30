@@ -477,7 +477,18 @@ elif page == "Documentation":
     # System Architecture & Model Tab
     with doc_tabs[1]:
         st.markdown("""
-         System Architecture Overview
+        <style>
+        .default-font {
+            font-family: "Source Sans Pro", sans-serif;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        </style>
+        <div class="default-font">
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        System Architecture Overview
         
         MOmics-ML follows a three-tier architecture consisting of:
         
@@ -547,30 +558,8 @@ elif page == "Documentation":
         4. Advanced markers in collapsible expander (831 remaining)
         5. Default zero-fill for baseline simulation
         6. Real-time validation and error messaging
-        
-        **Implementation Details:**
-```python
-         High-priority markers in 3-column layout
-        m_cols = st.columns(3)
-        for i, name in enumerate(feature_names[:12]):
-            with m_cols[i % 3]:
-                user_inputs[name] = st.number_input(
-                    f"{name}", 
-                    value=0.0, 
-                    key=f"man_in_{name}"
-                )
-        
-         Advanced markers in expander
-        with st.expander("Advanced Marker Input"):
-            adv_cols = st.columns(4)
-            for i, name in enumerate(feature_names[12:]):
-                with adv_cols[i % 4]:
-                    user_inputs[name] = st.number_input(
-                        f"{name}", 
-                        value=0.0, 
-                        key=f"man_adv_{name}"
-                    )
-```
+        7. Advanced markers in expander
+
         
         **Bulk Upload Interface**
         1. One-click CSV template download
@@ -580,19 +569,6 @@ elif page == "Documentation":
         5. Progress indication during processing
         6. Error handling with user-friendly messages
         
-        **File Processing Flow:**
-```python
-        uploaded_file = st.file_uploader("Upload CSV", type="csv")
-        if uploaded_file:
-            raw_df = pd.read_csv(uploaded_file)
-            # Align columns to model expectations
-            df_aligned = raw_df.reindex(
-                columns=feature_names, 
-                fill_value=0.0
-            )
-            # Process and display results
-            results = process_data(df_aligned)
-```
         
         #### 3. Visualization Components
         
@@ -688,42 +664,28 @@ elif page == "Documentation":
         **Processing Steps**:
         
         **Step 1: Column Alignment**
-```python
-        df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
-```
+
         - Reorders columns to match model's feature order
         - Fills missing columns with 0.0 (baseline)
         - Drops extra columns not in training set
         - Maintains row integrity (patient records)
         
         **Step 2: Type Conversion**
-```python
-        df_aligned = df_aligned.astype(float)
-```
+
         - Enforces numeric data types
         - Converts string representations to floats
         - Handles scientific notation
         - Raises errors for non-numeric values
         
         **Step 3: Model Inference**
-```python
-        probs = model.predict_proba(df_aligned)[:, 1]
-        preds = (probs > 0.5).astype(int)
-```
+
         - `predict_proba()` returns [P(low), P(high)]
         - Extract high-risk probability (column 1)
         - Binary classification at 0.5 threshold
         - Vectorized operation for batch efficiency
         
         **Step 4: Results Assembly**
-```python
-        results = pd.DataFrame({
-            "Prediction": ["High Risk" if p == 1 else "Low Risk" for p in preds],
-            "Risk Score": probs
-        })
-        return pd.concat([results, df_aligned.reset_index(drop=True)], axis=1)
-```
-        
+ 
         **Performance Metrics**:
         1. Single patient: <100ms
         2. 100 patients: ~1-2 seconds
@@ -836,7 +798,7 @@ elif page == "Documentation":
         **Training Methodology**:
         
         1. **Cross-Validation**:
-           - 5-fold stratified CV
+           - 3-fold stratified CV
            - Maintains class balance in each fold
            - Reduces overfitting risk
            - Provides robust performance estimates
@@ -871,10 +833,7 @@ elif page == "Documentation":
         #### Feature Importance Analysis
         
         **Calculation Method**: Gain-Based Importance
-```python
-        importances = model.feature_importances_
-```
-        
+
         **Definition**:
         - Measures average gain across all splits using the feature
         - Gain = improvement in objective function (log-loss)
@@ -943,7 +902,7 @@ elif page == "Documentation":
            - Trained ONLY on glioblastoma patients
            - NOT applicable to other brain tumors
            - NOT validated for recurrent disease
-           - Limited to adult patients (≥18 years)
+           - Trained on limited data sets.
         
         2. **Population Representativeness**:
            - Performance may vary across demographics
@@ -1005,13 +964,6 @@ elif page == "Documentation":
         - **Format**: Python pickle (XGBoost Booster object)
         - **Version**: XGBoost 1.7+, Python 3.8+
         
-        **Loading the Model**:
-```python
-        import pickle
-        with open('gbm_clinical_model.pkl', 'rb') as f:
-            bundle = pickle.load(f)
-        model = bundle["model"]
-```
         
         **Model Bundle Contents**:
         1. Trained XGBoost model object
