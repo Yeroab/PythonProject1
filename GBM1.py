@@ -410,13 +410,13 @@ elif page == "Documentation":
     # Overview Tab
     with doc_tabs[0]:
         st.markdown("""
-        ### Purpose & Scope
+        Purpose & Scope
         
         MOmics-ML is a clinical decision support tool designed for glioblastoma patient risk stratification. 
         The system integrates multi-omics biomarker data to generate probability-based risk assessments, 
         helping clinicians identify high-risk patients who may benefit from aggressive treatment strategies.
         
-        ### Workflow Architecture
+        Workflow Architecture
         
         The platform follows a streamlined analysis pipeline:
         
@@ -426,7 +426,7 @@ elif page == "Documentation":
         4. **Visualization**: Interactive dashboards display predictions, biomarker influences, and patient profiles
         5. **Export**: Results available for clinical record integration
         
-        ### Clinical Use Cases
+        Clinical Use Cases
         
         **Treatment Planning**
         1. Identify patients requiring aggressive intervention
@@ -452,7 +452,7 @@ elif page == "Documentation":
         3. Validate known prognostic markers
         4. Discover novel risk indicators
         
-        ### System Requirements
+        System Requirements
         
         **Hardware Requirements**
         1. Modern web browser (Chrome, Firefox, Safari, Edge)
@@ -477,9 +477,9 @@ elif page == "Documentation":
     # System Architecture & Model Tab
     with doc_tabs[1]:
         st.markdown("""
-        ### System Architecture Overview
+         System Architecture Overview
         
-        MOmics-AI follows a three-tier architecture consisting of:
+        MOmics-ML follows a three-tier architecture consisting of:
         
         1. **Frontend Layer** (Streamlit-based User Interface)
         2. **Backend Layer** (Python Processing Engine)
@@ -487,22 +487,21 @@ elif page == "Documentation":
         
         ---
         
-        ## Frontend Architecture
+        Frontend Architecture
         
-        ### Technology Stack
+        Technology Stack
         
         **Framework**: Streamlit 1.28+
         1. Python-based web framework for rapid deployment
         2. Built-in widget management and state handling
-        3. Automatic reactivity without JavaScript
-        4. Server-side rendering for security
-        5. Session-based architecture
+        3. Automatic reactivity
+        4. Session-based architecture
         
         **Visualization**: Plotly 5.17+
-        1. Interactive JavaScript-based charts
+        1. Interactive charts
         2. Hover tooltips and zooming capabilities
         3. Export to PNG/SVG formats
-        4. Responsive design for mobile devices
+        4. Responsive design 
         5. WebGL acceleration for large datasets
         
         **Data Handling**: Pandas 2.0+, NumPy 1.24+
@@ -513,27 +512,25 @@ elif page == "Documentation":
         5. CSV/Excel file I/O
         
         **Styling**: Custom CSS
-        1. Navy blue sidebar (#001f3f)
-        2. Light blue header and buttons (#5dade2)
-        3. Responsive grid layouts
-        4. Demo interaction boxes with color coding
-        5. Accessible color contrast ratios
+      
+        1. Responsive grid layouts
+        2. Demo interaction boxes with color coding
         
-        ### Component Architecture
         
-        #### 1. Navigation System
+        Component Architecture
+        
+        1. Navigation System
         
         **Sidebar Navigation**
-        1. Four primary sections via radio buttons
+        1. Four primary sections
         2. Persistent state across page reloads
         3. Visual highlighting of active page
-        4. Compact vertical layout
+        
         
         **Tab-based Sub-navigation**
         1. Organized content within each section
         2. Horizontal tab layout for easy scanning
-        3. Clear section separation with dividers
-        4. Intuitive workflow progression
+        3. Intuitive workflow progression
         
         **State Management**
         1. Streamlit session_state for persistence
@@ -541,7 +538,7 @@ elif page == "Documentation":
         3. Cross-component data sharing
         4. Reset functionality clears all states
         
-        #### 2. Input Modules
+         2. Input Modules
         
         **Manual Entry Interface**
         1. Top 12 high-influence biomarkers displayed by default
@@ -553,7 +550,7 @@ elif page == "Documentation":
         
         **Implementation Details:**
 ```python
-        # High-priority markers in 3-column layout
+         High-priority markers in 3-column layout
         m_cols = st.columns(3)
         for i, name in enumerate(feature_names[:12]):
             with m_cols[i % 3]:
@@ -563,7 +560,7 @@ elif page == "Documentation":
                     key=f"man_in_{name}"
                 )
         
-        # Advanced markers in expander
+         Advanced markers in expander
         with st.expander("Advanced Marker Input"):
             adv_cols = st.columns(4)
             for i, name in enumerate(feature_names[12:]):
@@ -648,34 +645,12 @@ elif page == "Documentation":
            - Aligned y-axes for easy comparison
            - Highlighting of common markers
         
-        #### 4. Interactive Features
+        4. Interactive Features
         
-        **Patient Selection Dropdown**
-```python
-        selected_idx = st.selectbox(
-            "Select Patient Record", 
-            results.index, 
-            key=f"{key_prefix}_select"
-        )
-```
+         Patient Selection Dropdown**
+/
         
-        **Expandable Sections**
-```python
-        with st.expander("View All Biomarker Values"):
-            st.dataframe(all_markers_df)
-```
-        
-        **Download Buttons**
-```python
-        st.download_button(
-            label="Download CSV Template",
-            data=template_csv,
-            file_name="MultiNet_Patient_Template.csv",
-            mime="text/csv"
-        )
-```
-        
-        ### User Experience Design Principles
+         User Experience Design Principles
         
         1. **Progressive Disclosure**: Essential features visible, advanced options hidden
         2. **Visual Hierarchy**: Clear headers, consistent spacing, typography scale
@@ -685,32 +660,14 @@ elif page == "Documentation":
         
         ---
         
-        ## Backend Architecture
+         Backend Architecture
         
-        ### Core Processing Pipeline
+         Core Processing Pipeline
         
-        #### 1. Model Loading (`load_assets`)
         
         **Function Purpose**: Load trained XGBoost model and prepare feature metadata
         
-        **Implementation**:
-```python
-        @st.cache_resource
-        def load_assets():
-            with open('gbm_clinical_model.pkl', 'rb') as f:
-                bundle = pickle.load(f)
-            
-            model = bundle["model"]
-            feature_names = model.get_booster().feature_names
-            importances = model.feature_importances_
-            
-            importance_df = pd.DataFrame({
-                'Biomarker': feature_names,
-                'Influence Score': importances
-            }).sort_values(by='Influence Score', ascending=False)
-            
-            return model, feature_names, importance_df
-```
+        
         
         **Caching Strategy**:
         1. `@st.cache_resource` ensures single load per session
@@ -832,16 +789,16 @@ elif page == "Documentation":
            - Cache-aware block structure
            - Hardware optimization (SSE, AVX)
         
-        ### Model Specifications
+        Model Specifications
         
-        #### Task Definition
+        Task Definition
         
         1. **Problem Type**: Supervised binary classification
         2. **Target Variable**: GBM risk category (High/Low)
         3. **Output**: Calibrated probability scores (0.0 - 1.0)
         4. **Decision Boundary**: 0.5 threshold (adjustable)
         
-        #### Input Features
+        Input Features
         
         **Feature Space**: 843 multi-omics biomarkers
         
@@ -867,7 +824,7 @@ elif page == "Documentation":
         3. No log-transformation or normalization
         4. Preserves interpretability for clinicians
         
-        #### Training Protocol
+        Training Protocol
         
         **Dataset Characteristics**:
         1. Disease: Glioblastoma Multiforme (GBM)
@@ -936,7 +893,7 @@ elif page == "Documentation":
         3. **Research Validation**: Confirm known prognostic factors
         4. **Drug Target Discovery**: Identify therapeutic pathways
         
-        #### Model Outputs
+        Model Outputs
         
         **Risk Score Interpretation**:
         
@@ -1129,7 +1086,7 @@ elif page == "Documentation":
         4. Units: μM, mM, or relative abundance
         5. Technology: Mass spectrometry, NMR spectroscopy
         
-        #### Value Ranges
+        Value Ranges
         
         **Data Type Requirements**
         1. Format: Continuous numeric (float or integer)
@@ -1149,7 +1106,7 @@ elif page == "Documentation":
         3. Do not use NULL, NA, or text indicators
         4. Missing markers reduce accuracy but don't break model
         
-        #### CSV File Format (Bulk Upload)
+        CSV File Format (Bulk Upload)
         
         **Header Row Requirements**
         1. Must contain exact biomarker names matching model features
@@ -1176,7 +1133,7 @@ elif page == "Documentation":
         3. Column order does not matter
         4. Patient IDs preserved if labeled correctly
         
-        #### Manual Entry Guidelines
+        Manual Entry Guidelines
         
         1. Prioritize top 12 high-influence markers shown by default
         2. Use zero for unknowns (leave fields at 0.0 if data unavailable)
@@ -1184,7 +1141,7 @@ elif page == "Documentation":
         4. Avoid text (only numeric inputs accepted)
         5. Quality control (review values before submission)
         
-        ### Template Generation
+        Template Generation
         
         **Download Process**
         1. Navigate to User Analysis → Bulk Data Upload
@@ -1200,7 +1157,7 @@ elif page == "Documentation":
         5. Save as CSV format (not Excel .xlsx)
         6. Upload via User Analysis interface
         
-        ### Data Privacy & Security
+        Data Privacy & Security
         
         **No Persistent Storage**
         1. Patient data not saved on server
