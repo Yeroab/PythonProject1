@@ -691,20 +691,8 @@ elif page == "Documentation":
         3. Mode-aware rendering (manual vs bulk)
         4. Unique keys prevent widget collisions
         
-        **Data Flow**:
 
-        User Input → process_data() → Results DataFrame
-                                           ↓
-                                    render_dashboard()
-                                           ↓
-                        ┌──────────────────┴──────────────────┐
-                        ↓                                      ↓
-                render_risk_charts()              Patient-Specific Viz
-                        ↓                                      ↓
-            (Gauge/Histogram/Bar)                  (Radar/Top20/Comparison)
 
-        
-        ---
         
         ## Machine Learning Layer
         
