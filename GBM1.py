@@ -8,7 +8,7 @@ import io
 from PIL import Image
 
 # --- Page Configuration ---
-st.set_page_config(page_title="MOmics-AI", layout="wide", page_icon="🧬")
+st.set_page_config(page_title="MOmics-ML", layout="wide", page_icon="🧬")
 
 # --- Custom CSS for Blue Theme ---
 st.markdown("""
@@ -370,7 +370,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
 
 # --- SIDEBAR NAVIGATION ---
-st.sidebar.title("MOmics-AI")
+st.sidebar.title("MOmics-ML")
 st.sidebar.markdown("---")
 page = st.sidebar.radio(
     "Navigation",
@@ -392,7 +392,7 @@ if page == "Home":
         st.info("Logo image not found. Please ensure 'logo.png' is in the root directory.")
     
     # Centered title
-    st.markdown("<h1 style='text-align: center;'>MultiNet_AI</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center;'>MOmics-ML</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>GBM Clinical Diagnostic Suite</h3>", unsafe_allow_html=True)
 
 # ============================================================================
