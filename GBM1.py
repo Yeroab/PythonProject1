@@ -124,11 +124,11 @@ def generate_demo_data():
     patient1 = {}
     for name in demo_feature_names:
         if '_prot' in name:
-            patient1[name] = np.random.uniform(15, 35)
+            patient1[name] = np.random.uniform(0.988, 5)
         elif '_rna' in name:
-            patient1[name] = np.random.uniform(100, 200)
+            patient1[name] = np.random.uniform(50, 70)
         else:
-            patient1[name] = np.random.uniform(50, 150)
+            patient1[name] = np.random.uniform(900, 1000)
     demo_patients.append(patient1)
     
     # Patient 2: Low Risk Profile
@@ -146,11 +146,11 @@ def generate_demo_data():
     patient3 = {}
     for name in demo_feature_names:
         if '_prot' in name:
-            patient3[name] = np.random.uniform(10, 25)
+            patient3[name] = np.random.uniform(100, 250)
         elif '_rna' in name:
-            patient3[name] = np.random.uniform(75, 150)
+            patient3[name] = np.random.uniform(750, 800)
         else:
-            patient3[name] = np.random.uniform(35, 115)
+            patient3[name] = np.random.uniform(350, 500)
     demo_patients.append(patient3)
     
     # Fill remaining features with 0
@@ -476,16 +476,7 @@ elif page == "Documentation":
     
     # System Architecture & Model Tab
     with doc_tabs[1]:
-        st.markdown("""
-        <style>
-        .default-font {
-            font-family: "Source Sans Pro", sans-serif;
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-        </style>
-        <div class="default-font">
-        """, unsafe_allow_html=True)
+
         
         st.markdown("""
         System Architecture Overview
@@ -624,7 +615,7 @@ elif page == "Documentation":
         4. Interactive Features
         
          Patient Selection Dropdown**
-/
+
         
          User Experience Design Principles
         
@@ -701,7 +692,7 @@ elif page == "Documentation":
         4. Unique keys prevent widget collisions
         
         **Data Flow**:
-```
+
         User Input → process_data() → Results DataFrame
                                            ↓
                                     render_dashboard()
@@ -711,7 +702,7 @@ elif page == "Documentation":
                 render_risk_charts()              Patient-Specific Viz
                         ↓                                      ↓
             (Gauge/Histogram/Bar)                  (Radar/Top20/Comparison)
-```
+
         
         ---
         
@@ -803,28 +794,15 @@ elif page == "Documentation":
            - Reduces overfitting risk
            - Provides robust performance estimates
         
-        2. **Hyperparameter Tuning**:
-```python
-           params = {
-               'objective': 'binary:logistic',
-               'booster': 'gbtree',
-               'max_depth': 6,
-               'learning_rate': 0.1,
-               'subsample': 0.8,
-               'colsample_bytree': 0.8,
-               'reg_alpha': 0.1,  # L1 regularization
-               'reg_lambda': 1.0,  # L2 regularization
-               'scale_pos_weight': 1.0  # Class balance
-           }
-```
+
         
-        3. **Early Stopping**:
+        2. **Early Stopping**:
            - Monitors validation AUC-ROC
            - Patience: 50 rounds without improvement
            - Saves best model automatically
            - Prevents overtraining
         
-        4. **Evaluation Metrics**:
+        3. **Evaluation Metrics**:
            - **Primary**: AUC-ROC (Area Under ROC Curve)
            - **Secondary**: Balanced Accuracy, F1-Score
            - **Calibration**: Brier Score, Calibration Plots
