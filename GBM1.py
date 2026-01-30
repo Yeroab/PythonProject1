@@ -378,7 +378,7 @@ page = st.sidebar.radio(
 )
 
 # --- MAIN INTERFACE ---
-st.title("MOmics-AI | GBM Clinical Diagnostic Suite")
+st.title("MOmics-ML | GBM Clinical Diagnostic Suite")
 
 # ============================================================================
 # HOME PAGE
@@ -412,7 +412,7 @@ elif page == "Documentation":
         st.markdown("""
         ### Purpose & Scope
         
-        MOmics-AI is a clinical decision support tool designed for glioblastoma patient risk stratification. 
+        MOmics-ML is a clinical decision support tool designed for glioblastoma patient risk stratification. 
         The system integrates multi-omics biomarker data to generate probability-based risk assessments, 
         helping clinicians identify high-risk patients who may benefit from aggressive treatment strategies.
         
