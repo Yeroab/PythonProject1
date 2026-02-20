@@ -177,9 +177,9 @@ def process_data(df):
         imputer_features = list(imputer.feature_names_in_)
         df_full = df.reindex(columns=imputer_features, fill_value=np.nan)
 
-        # Step 2: Impute missing values
+        # Step 2: Impute missing values (cast to float64 to match training dtype)
         df_imputed = pd.DataFrame(
-            imputer.transform(df_full),
+            imputer.transform(df_full.astype(np.float64)),
             columns=imputer_features
         )
 
