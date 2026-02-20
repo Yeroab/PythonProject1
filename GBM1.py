@@ -80,33 +80,42 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Asset Loading (Model & Feature Metadata) ---
+# --- Asset Loading (Model, Imputer, Scaler & Feature List) ---
 @st.cache_resource
 def load_assets():
     try:
-        with open('gbm_clinical_model.pkl', 'rb') as f:
-            bundle = pickle.load(f)
-        
-        # Extract model from dictionary
-        model = bundle["model"]
-        feature_names = model.get_booster().feature_names
-        
+        with open('momics_xgb_model-1.pkl', 'rb') as f:
+            model = pickle.load(f)
+
+        with open('imputer-1.pkl', 'rb') as f:
+            imputer = pickle.load(f)
+
+        with open('scaler-1.pkl', 'rb') as f:
+            scaler = pickle.load(f)
+
+        with open('feature_list-1.pkl', 'rb') as f:
+            feature_list = pickle.load(f)
+
+        # Feature names expected by the XGBoost model (100 selected features)
+        feature_names = list(model.feature_names_in_)
+
         # Calculate Global Feature Importance (Risk Probability Influence)
         importances = model.feature_importances_
         importance_df = pd.DataFrame({
             'Biomarker': feature_names,
             'Influence Score': importances
         }).sort_values(by='Influence Score', ascending=False)
-        
-        return model, feature_names, importance_df
-    except FileNotFoundError:
-        st.error("File 'gbm_clinical_model.pkl' not found. Please ensure it is in the root directory.")
+
+        return model, imputer, scaler, feature_list, feature_names, importance_df
+
+    except FileNotFoundError as e:
+        st.error(f"Required file not found: {e}. Please ensure all pkl files are in the root directory.")
         st.stop()
     except Exception as e:
         st.error(f"Initialization Error: {e}")
         st.stop()
 
-model, feature_names, importance_df = load_assets()
+model, imputer, scaler, feature_list, feature_names, importance_df = load_assets()
 
 # --- Generate Sample Demo Data ---
 @st.cache_data
@@ -123,9 +132,9 @@ def generate_demo_data():
     # Patient 1: High Risk Profile
     patient1 = {}
     for name in demo_feature_names:
-        if '_prot' in name:
+        if '_prot' in name.lower() or 'PROT' in name:
             patient1[name] = np.random.uniform(0.988, 5)
-        elif '_rna' in name:
+        elif 'RNA' in name or '_rna' in name.lower():
             patient1[name] = np.random.uniform(50, 70)
         else:
             patient1[name] = np.random.uniform(900, 1000)
@@ -134,9 +143,9 @@ def generate_demo_data():
     # Patient 2: Low Risk Profile
     patient2 = {}
     for name in demo_feature_names:
-        if '_prot' in name:
+        if '_prot' in name.lower() or 'PROT' in name:
             patient2[name] = np.random.uniform(5, 15)
-        elif '_rna' in name:
+        elif 'RNA' in name or '_rna' in name.lower():
             patient2[name] = np.random.uniform(50, 100)
         else:
             patient2[name] = np.random.uniform(20, 80)
@@ -145,9 +154,9 @@ def generate_demo_data():
     # Patient 3: Moderate Risk Profile
     patient3 = {}
     for name in demo_feature_names:
-        if '_prot' in name:
+        if '_prot' in name.lower() or 'PROT' in name:
             patient3[name] = np.random.uniform(100, 250)
-        elif '_rna' in name:
+        elif 'RNA' in name or '_rna' in name.lower():
             patient3[name] = np.random.uniform(750, 800)
         else:
             patient3[name] = np.random.uniform(350, 500)
@@ -160,22 +169,40 @@ def generate_demo_data():
     
     return pd.DataFrame(demo_patients)
 
-# --- Section: Processing Engine (Direct Raw Values) ---
+# --- Section: Processing Engine (Impute → Scale → Select → Predict) ---
 def process_data(df):
-    # Align user input with the 843 markers expected by the model
-    df_aligned = df.reindex(columns=feature_names, fill_value=0.0)
-    
     with st.spinner("Analyzing Patient Biomarkers..."):
-        # Inference using raw values (as requested)
-        probs = model.predict_proba(df_aligned.astype(float))[:, 1]
+
+        # Step 1: Align input to the full 70,961-feature space expected by imputer/scaler
+        imputer_features = list(imputer.feature_names_in_)
+        df_full = df.reindex(columns=imputer_features, fill_value=np.nan)
+
+        # Step 2: Impute missing values
+        df_imputed = pd.DataFrame(
+            imputer.transform(df_full),
+            columns=imputer_features
+        )
+
+        # Step 3: Scale
+        df_scaled = pd.DataFrame(
+            scaler.transform(df_imputed),
+            columns=imputer_features
+        )
+
+        # Step 4: Select the 100 features the model expects
+        df_model_input = df_scaled.reindex(columns=feature_names, fill_value=0.0)
+
+        # Step 5: Inference
+        probs = model.predict_proba(df_model_input.astype(float))[:, 1]
         preds = (probs > 0.5).astype(int)
-        
+
         results = pd.DataFrame({
             "Prediction": ["High Risk" if p == 1 else "Low Risk" for p in preds],
             "Risk Score": probs
         })
-        # Merge risk results with original marker data
-        return pd.concat([results, df_aligned.reset_index(drop=True)], axis=1)
+
+        # Merge risk results with the 100-feature model input for downstream visualizations
+        return pd.concat([results, df_model_input.reset_index(drop=True)], axis=1)
 
 # --- Section: Risk & Prediction Visuals ---
 def render_risk_charts(results, mode="manual", key_prefix=""):
@@ -303,8 +330,8 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     with col_l:
         st.write("### Multi-Modal Signature")
         # Group by marker suffix
-        prot_avg = patient_row.filter(like='_prot').mean()
-        rna_avg = patient_row.filter(like='_rna').mean()
+        prot_avg = patient_row.filter(like='PROT').mean()
+        rna_avg = patient_row.filter(like='RNA').mean()
         met_avg = patient_row.filter(like='_met').mean()
         
         fig_radar = go.Figure(data=go.Scatterpolar(
@@ -700,10 +727,6 @@ elif page == "Documentation":
         
         **Algorithm**: XGBoost (Extreme Gradient Boosting)
         
-        **GitHub Repository**: 
-        - **Model File**: [gbm_clinical_model.pkl](https://github.com/Yeroab/PythonProject1/blob/main/gbm_clinical_model.pkl)
-        - **Repository**: [PythonProject1](https://github.com/Yeroab/PythonProject1)
-        
         ### Why XGBoost?
         
         1. **High-Dimensional Data Handling**
@@ -924,18 +947,11 @@ elif page == "Documentation":
         
         ### Model Access and Deployment
         
-        **GitHub Repository**:
-        - **Direct Link**: [gbm_clinical_model.pkl](https://github.com/Yeroab/PythonProject1/blob/main/gbm_clinical_model.pkl)
-        - **Model Size**: ~50MB (serialized pickle file)
-        - **Format**: Python pickle (XGBoost Booster object)
-        - **Version**: XGBoost 1.7+, Python 3.8+
-        
-        
         **Model Bundle Contents**:
-        1. Trained XGBoost model object
-        2. Feature names (843 biomarkers)
-        3. Feature importances (gain-based)
-        4. Training metadata (optional)
+        1. Trained XGBoost model object (momics_xgb_model-1.pkl)
+        2. Imputer for missing value handling (imputer-1.pkl)
+        3. StandardScaler for feature normalization (scaler-1.pkl)
+        4. Selected feature list - 100 biomarkers (feature_list-1.pkl)
         
         ### Recommendations
         
@@ -1119,7 +1135,7 @@ elif page == "User Analysis":
             with m_cols[i % 3]:
                 user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
                 
-        with st.expander("Advanced Marker Input (Full 843 Set)"):
+        with st.expander("Advanced Marker Input (Full Set)"):
             adv_cols = st.columns(4)
             for i, name in enumerate(feature_names[12:]):
                 with adv_cols[i % 4]:
@@ -1140,7 +1156,7 @@ elif page == "User Analysis":
         col_t1, col_t2 = st.columns([2, 1])
         with col_t2:
             st.write("### Download Template")
-            # Generate empty template with 843 columns
+            # Generate empty template with model feature columns
             template_csv = pd.DataFrame(columns=feature_names).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download CSV Template",
