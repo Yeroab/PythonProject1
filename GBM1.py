@@ -89,6 +89,9 @@ def load_assets():
 
         with open('imputer-1.pkl', 'rb') as f:
             imputer = pickle.load(f)
+        # Patch sklearn version mismatch: 1.6.1 used _fill_dtype, newer versions use _fit_dtype
+        if not hasattr(imputer, '_fill_dtype') and hasattr(imputer, '_fit_dtype'):
+            imputer._fill_dtype = imputer._fit_dtype
 
         with open('scaler-1.pkl', 'rb') as f:
             scaler = pickle.load(f)
