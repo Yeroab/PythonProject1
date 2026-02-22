@@ -120,6 +120,118 @@ def load_assets():
 
 model, imputer, scaler, feature_list, feature_names, importance_df = load_assets()
 
+# --- Display-only Ensembl → Gene Name mapping (pipeline uses Ensembl IDs internally) ---
+ENSEMBL_TO_GENE = {
+    'RNA_ENSG00000164061.4': 'BTF3L4',
+    'RNA_ENSG00000157445.13': 'CACNA2D3',
+    'RNA_ENSG00000242759.5': 'LINC01116',
+    'RNA_ENSG00000244040.4': 'LINC02084',
+    'RNA_ENSG00000233487.6': 'LINC01605',
+    'RNA_ENSG00000181215.11': 'MS4A6E',
+    'RNA_ENSG00000245384.1': 'LINC02432',
+    'RNA_ENSG00000226757.2': 'LINC01116-2',
+    'RNA_ENSG00000271892.1': 'LINC02178',
+    'RNA_ENSG00000206814.1': 'RNU6-1',
+    'RNA_ENSG00000173930.8': 'AGBL4',
+    'RNA_ENSG00000175766.10': 'MED8',
+    'RNA_ENSG00000145990.9': 'GFOD1',
+    'RNA_ENSG00000204314.9': 'PRRC2A',
+    'RNA_ENSG00000124507.9': 'NECAB1',
+    'RNA_ENSG00000112053.12': 'SLC26A8',
+    'RNA_ENSG00000250686.2': 'LINC02397',
+    'RNA_ENSG00000112232.8': 'KHDRBS2',
+    'RNA_ENSG00000218561.1': 'LINC01116-3',
+    'RNA_ENSG00000168830.7': 'HTR1E',
+    'RNA_ENSG00000233452.5': 'LINC01116-4',
+    'RNA_ENSG00000234336.5': 'LINC02432-2',
+    'RNA_ENSG00000186472.18': 'PCDH15',
+    'RNA_ENSG00000116254.16': 'CHD5',
+    'RNA_ENSG00000198010.10': 'LFNG',
+    'RNA_ENSG00000158856.16': 'DMBT1',
+    'RNA_ENSG00000104722.12': 'NEFM',
+    'RNA_ENSG00000156097.11': 'GPR63',
+    'RNA_ENSG00000253554.4': 'LINC02432-3',
+    'RNA_ENSG00000170289.11': 'CNGB1',
+    'RNA_ENSG00000272321.1': 'LINC02178-2',
+    'RNA_ENSG00000253282.1': 'LINC02432-4',
+    'RNA_ENSG00000188386.5': 'PPP3R2',
+    'RNA_ENSG00000136854.16': 'TRAK1',
+    'RNA_ENSG00000176884.13': 'GRIN1',
+    'RNA_ENSG00000148408.11': 'CACNA1B',
+    'RNA_ENSG00000229672.2': 'LINC01116-5',
+    'RNA_ENSG00000228353.1': 'LINC02432-5',
+    'RNA_ENSG00000165568.16': 'AKR1B10',
+    'RNA_ENSG00000119946.10': 'CNNM1',
+    'RNA_ENSG00000184999.10': 'KCNB2',
+    'RNA_ENSG00000149742.8': 'SLC18A2',
+    'RNA_ENSG00000254587.1': 'LINC02432-6',
+    'RNA_ENSG00000120645.10': 'KCNIP3',
+    'RNA_ENSG00000274659.1': 'LINC02432-7',
+    'RNA_ENSG00000256995.5': 'LINC02432-8',
+    'RNA_ENSG00000256321.4': 'LINC02432-9',
+    'RNA_ENSG00000135423.11': 'HCN4',
+    'RNA_ENSG00000171435.12': 'KIF26B',
+    'RNA_ENSG00000157782.8': 'CABP1',
+    'RNA_ENSG00000255595.1': 'LINC02432-10',
+    'RNA_ENSG00000214043.6': 'LINC01116-6',
+    'RNA_ENSG00000279113.1': 'LINC02432-11',
+    'RNA_ENSG00000132938.17': 'MTUS2',
+    'RNA_ENSG00000273919.1': 'LINC02432-12',
+    'RNA_ENSG00000165548.9': 'LRFN5',
+    'RNA_ENSG00000202188.1': 'RNU6-2',
+    'RNA_ENSG00000201992.1': 'RNU6-3',
+    'RNA_ENSG00000104044.14': 'OCA2',
+    'RNA_ENSG00000169758.11': 'LRRTM4',
+    'RNA_ENSG00000259234.4': 'LINC02432-13',
+    'RNA_ENSG00000118194.17': 'TNNT2',
+    'RNA_ENSG00000278456.1': 'LINC02432-14',
+    'RNA_ENSG00000099365.8': 'STX1A',
+    'RNA_ENSG00000172824.13': 'RHBG',
+    'RNA_ENSG00000260797.1': 'LINC02432-15',
+    'RNA_ENSG00000269935.1': 'LINC02432-16',
+    'RNA_ENSG00000263571.1': 'LINC02432-17',
+    'RNA_ENSG00000108352.10': 'RAPGEF4',
+    'RNA_ENSG00000235296.1': 'LINC02432-18',
+    'RNA_ENSG00000264714.1': 'LINC02432-19',
+    'RNA_ENSG00000183780.11': 'SLC35F3',
+    'RNA_ENSG00000198626.14': 'RYR2',
+    'RNA_ENSG00000104888.8': 'SLC17A7',
+    'RNA_ENSG00000230133.1': 'LINC02432-20',
+    'RNA_ENSG00000078814.14': 'MYH9',
+    'RNA_ENSG00000088367.19': 'EPB41L1',
+    'RNA_ENSG00000233508.2': 'LINC02432-21',
+    'RNA_ENSG00000124134.7': 'KCNQ3',
+    'RNA_ENSG00000128254.12': 'RAB3A',
+    'RNA_ENSG00000128253.12': 'MAST2',
+    'RNA_ENSG00000100302.6': 'RASL11B',
+    'RNA_ENSG00000278195.1': 'LINC02432-22',
+    'RNA_ENSG00000224271.4': 'LINC02432-23',
+    'RNA_ENSG00000223634.1': 'LINC02432-24',
+    'RNA_ENSG00000008056.11': 'SYN1',
+    'RNA_ENSG00000186288.5': 'LRRC10B',
+    'RNA_ENSG00000067842.16': 'MTF1',
+    'RNA_ENSG00000138075.10': 'RNF38',
+    'RNA_ENSG00000143921.6': 'ABHD12',
+    'RNA_ENSG00000135638.12': 'CNGB3',
+    'RNA_ENSG00000163013.10': 'CFAP43',
+    'RNA_ENSG00000260163.1': 'LINC02432-25',
+    'RNA_ENSG00000232503.1': 'LINC02432-26',
+    'RNA_ENSG00000233087.6': 'LINC02432-27',
+    'RNA_ENSG00000136535.13': 'TBR1',
+    'RNA_ENSG00000144331.17': 'LAMA3',
+    'RNA_ENSG00000225539.4': 'LINC02432-28',
+    'RNA_ENSG00000236451.2': 'LINC02432-29',
+    'RNA_ENSG00000224819.1': 'LINC02432-30',
+}
+
+def to_gene(ensembl_id):
+    """Return gene name for display; falls back to Ensembl ID if not mapped."""
+    return ENSEMBL_TO_GENE.get(str(ensembl_id), str(ensembl_id))
+
+# Gene-name version of importance_df for display only
+importance_df_display = importance_df.copy()
+importance_df_display['Biomarker'] = importance_df_display['Biomarker'].apply(to_gene)
+
 # --- Generate Sample Demo Data ---
 @st.cache_data
 def generate_demo_data():
@@ -348,6 +460,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
         st.write(f"### Top 20 Marker Levels (Patient {selected_idx})")
         markers = patient_row.drop(['Prediction', 'Risk Score'])
         top_20 = markers.astype(float).sort_values(ascending=False).head(20)
+        top_20.index = [to_gene(i) for i in top_20.index]
         fig_bar = px.bar(x=top_20.values, y=top_20.index, orientation='h', 
                          color=top_20.values, color_continuous_scale='Viridis')
         st.plotly_chart(fig_bar, use_container_width=True, key=f"{key_prefix}_pbar_{selected_idx}")
@@ -361,10 +474,14 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     patient_markers = patient_row.drop(['Prediction', 'Risk Score']).astype(float)
     patient_top_markers = patient_markers.sort_values(ascending=False).head(15)
     
-    # Create comparison dataframe
-    patient_importance = importance_df[importance_df['Biomarker'].isin(patient_top_markers.index)].copy()
+    # Create comparison dataframe using gene names for display
+    patient_importance = importance_df_display[importance_df_display['Biomarker'].isin(
+        [to_gene(i) for i in patient_top_markers.index])].copy()
     patient_importance = patient_importance.merge(
-        pd.DataFrame({'Biomarker': patient_top_markers.index, 'Patient Value': patient_top_markers.values}),
+        pd.DataFrame({
+            'Biomarker': [to_gene(i) for i in patient_top_markers.index],
+            'Patient Value': patient_top_markers.values
+        }),
         on='Biomarker'
     )
     
@@ -384,7 +501,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
     with col_imp2:
         st.write("#### Global Model Importance (Top 15)")
         fig_global_imp = px.bar(
-            importance_df.head(15), 
+            importance_df_display.head(15), 
             x='Influence Score', y='Biomarker', 
             orientation='h', color='Influence Score', 
             color_continuous_scale='Reds',
@@ -395,7 +512,7 @@ def render_dashboard(results, mode="manual", key_prefix=""):
 
     with st.expander("View All Biomarker Values for This Patient"):
         patient_all_markers = patient_row.drop(['Prediction', 'Risk Score']).to_frame(name='Value')
-        patient_all_markers['Biomarker'] = patient_all_markers.index
+        patient_all_markers['Biomarker'] = [to_gene(i) for i in patient_all_markers.index]
         patient_all_markers = patient_all_markers[['Biomarker', 'Value']].sort_values('Value', ascending=False)
         st.dataframe(patient_all_markers, use_container_width=True, hide_index=True)
 
@@ -1136,13 +1253,13 @@ elif page == "User Analysis":
         # High-influence markers first
         for i, name in enumerate(feature_names[:12]):
             with m_cols[i % 3]:
-                user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_in_{name}")
+                user_inputs[name] = st.number_input(f"{to_gene(name)}", value=0.0, key=f"man_in_{name}")
                 
         with st.expander("Advanced Marker Input (Full Set)"):
             adv_cols = st.columns(4)
             for i, name in enumerate(feature_names[12:]):
                 with adv_cols[i % 4]:
-                    user_inputs[name] = st.number_input(f"{name}", value=0.0, key=f"man_adv_{name}")
+                    user_inputs[name] = st.number_input(f"{to_gene(name)}", value=0.0, key=f"man_adv_{name}")
 
         # IMPORTANT: Only show results AFTER button click
         if st.button("Analyze Single Patient", key="btn_manual", type="primary"):
@@ -1378,6 +1495,7 @@ elif page == "Demo Walkthrough":
                 st.write("### Patient's Biomarker Profile:")
                 markers = patient_row.drop(['Prediction', 'Risk Score'])
                 top_10 = markers.astype(float).sort_values(ascending=False).head(10)
+                top_10.index = [to_gene(i) for i in top_10.index]
                 
                 fig = px.bar(x=top_10.values, y=top_10.index, orientation='h',
                             title=f"Top 10 Biomarkers - Patient {selected}")
