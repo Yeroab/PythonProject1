@@ -324,23 +324,14 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
     st.subheader("Prediction & Risk Assessment")
     
     if mode == "manual":
-        # Individual Gauge for Single Entry
+        # Show risk result as metric cards only
         prob = results["Risk Score"].iloc[0]
         pred = results["Prediction"].iloc[0]
-        color = "#EF553B" if pred == "High Risk" else "#00CC96"
-        
-        fig_gauge = go.Figure(go.Indicator(
-            mode = "gauge+number",
-            value = prob * 100,
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': f"Assessment: {pred}", 'font': {'size': 24, 'color': color}},
-            gauge = {
-                'axis': {'range': [0, 100]},
-                'bar': {'color': color},
-                'steps': [
-                    {'range': [0, 50], 'color': "lightgray"},
-                    {'range': [50, 100], 'color': "gray"}]}))
-        st.plotly_chart(fig_gauge, use_container_width=True, key=f"{key_prefix}_gauge")
+        col_m1, col_m2 = st.columns(2)
+        with col_m1:
+            st.metric("Prediction", pred)
+        with col_m2:
+            st.metric("Risk Score", f"{prob:.2%}")
     else:
         # Charts for Bulk Entry
         col_chart1, col_chart2 = st.columns(2)
