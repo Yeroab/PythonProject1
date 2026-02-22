@@ -1,4 +1,4 @@
-import streamlit as st
+\import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -227,6 +227,17 @@ ENSEMBL_TO_GENE = {
 def to_gene(ensembl_id):
     """Return gene name for display; falls back to Ensembl ID if not mapped."""
     return ENSEMBL_TO_GENE.get(str(ensembl_id), str(ensembl_id))
+
+# Reverse mapping: gene display name → Ensembl ID (for remapping uploaded files)
+GENE_TO_ENSEMBL = {v: k for k, v in ENSEMBL_TO_GENE.items()}
+
+def remap_uploaded_df(df):
+    """
+    Remap uploaded CSV columns from gene names back to Ensembl IDs so the
+    pipeline can process them correctly. Columns already in Ensembl format are
+    left untouched. Unrecognised columns are also left untouched.
+    """
+    return df.rename(columns=lambda col: GENE_TO_ENSEMBL.get(col, col))
 
 # Gene-name version of importance_df for display only
 importance_df_display = importance_df.copy()
@@ -1267,8 +1278,9 @@ elif page == "User Analysis":
         col_t1, col_t2 = st.columns([2, 1])
         with col_t2:
             st.write("### Download Template")
-            # Generate empty template with model feature columns
-            template_csv = pd.DataFrame(columns=feature_names).to_csv(index=False).encode('utf-8')
+            # Generate template with gene name columns (user-friendly)
+            gene_name_columns = [to_gene(f) for f in feature_names]
+            template_csv = pd.DataFrame(columns=gene_name_columns).to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download CSV Template",
                 data=template_csv,
@@ -1287,6 +1299,20 @@ elif page == "User Analysis":
             try:
                 raw_df = pd.read_csv(uploaded_file)
                 st.success(f" File uploaded successfully! Found {len(raw_df)} patient(s).")
+                
+                # Remap gene name columns → Ensembl IDs so the pipeline works correctly
+                # (supports both gene-name template uploads and legacy Ensembl ID uploads)
+                raw_df = remap_uploaded_df(raw_df)
+
+                # Warn about unrecognised columns that will be dropped
+                recognised = set(feature_names) | set(GENE_TO_ENSEMBL.keys())
+                extra_cols = [c for c in raw_df.columns if c not in recognised]
+                if extra_cols:
+                    st.warning(
+                        f"{len(extra_cols)} unrecognised column(s) were found and will be "
+                        f"ignored: {', '.join(extra_cols[:5])}{'...' if len(extra_cols) > 5 else ''}. "
+                        f"Only the 100 model features are used for analysis."
+                    )
                 
                 # Process and show dashboard
                 b_results = process_data(raw_df)
