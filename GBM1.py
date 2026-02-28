@@ -1320,20 +1320,40 @@ elif page == "User Analysis":
                 ref_df = pd.read_csv(ref_file, sep=sep, encoding="utf-8-sig", low_memory=False)
                 # Strip whitespace from column names
                 ref_df.columns = ref_df.columns.str.strip()
-                # Check required columns exist
-                missing = [c for c in ["gene_id", "gene_name"] if c not in ref_df.columns]
-                if missing:
-                    st.error(
-                        f"Reference file is missing required column(s): {missing}. "
-                        f"Found columns: {list(ref_df.columns[:10])}"
-                    )
-                else:
+                # Use whichever of gene_id / gene_name are present
+                has_gene_id = "gene_id" in ref_df.columns
+                has_gene_name = "gene_name" in ref_df.columns
+
+                if has_gene_id and has_gene_name:
                     ref_df = ref_df[["gene_id", "gene_name"]].dropna()
                     ref_df = ref_df[~ref_df["gene_name"].duplicated(keep="first")]
                     ref_mapping = dict(zip(ref_df["gene_name"], "RNA_" + ref_df["gene_id"]))
                     full_gene_to_ensembl.update(ref_mapping)
                     st.success(
                         f"Reference file loaded. {len(ref_mapping):,} gene name mappings available."
+                    )
+                elif has_gene_id and not has_gene_name:
+                    # No gene_name column - map gene_id to RNA_gene_id only
+                    ref_df = ref_df[["gene_id"]].dropna()
+                    ref_df = ref_df[~ref_df["gene_id"].duplicated(keep="first")]
+                    ref_mapping = dict(zip(ref_df["gene_id"], "RNA_" + ref_df["gene_id"]))
+                    full_gene_to_ensembl.update(ref_mapping)
+                    st.warning(
+                        f"gene_name column not found. Mapped {len(ref_mapping):,} Ensembl IDs "
+                        f"using gene_id only. Gene names will not be recognised."
+                    )
+                elif has_gene_name and not has_gene_id:
+                    # No gene_id column - cannot build RNA_ENSG format, warn user
+                    st.warning(
+                        f"gene_id column not found. Cannot build Ensembl ID mapping without it. "
+                        f"Found columns: {list(ref_df.columns[:10])}. "
+                        f"The app will proceed using only the built-in 100-feature mapping."
+                    )
+                else:
+                    st.warning(
+                        f"Neither gene_id nor gene_name columns were found. "
+                        f"Found columns: {list(ref_df.columns[:10])}. "
+                        f"The app will proceed using only the built-in 100-feature mapping."
                     )
             except Exception as e:
                 st.error(f"Could not read reference file: {e}")
