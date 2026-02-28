@@ -1316,17 +1316,25 @@ elif page == "User Analysis":
         if ref_file is not None:
             try:
                 sep = "\t" if ref_file.name.endswith((".tsv", ".txt")) else ","
-                ref_df = pd.read_csv(ref_file, sep=sep, usecols=["gene_id", "gene_name"])
-                ref_df = ref_df.dropna(subset=["gene_id", "gene_name"])
-                ref_df = ref_df[~ref_df["gene_name"].duplicated(keep="first")]
-                ref_mapping = {
-                    row["gene_name"]: f"RNA_{row['gene_id']}"
-                    for _, row in ref_df.iterrows()
-                }
-                full_gene_to_ensembl.update(ref_mapping)
-                st.success(
-                    f"Reference file loaded. {len(ref_mapping):,} gene name mappings available."
-                )
+                # Read full file first to avoid usecols matching issues with BOM/encoding
+                ref_df = pd.read_csv(ref_file, sep=sep, encoding="utf-8-sig", low_memory=False)
+                # Strip whitespace from column names
+                ref_df.columns = ref_df.columns.str.strip()
+                # Check required columns exist
+                missing = [c for c in ["gene_id", "gene_name"] if c not in ref_df.columns]
+                if missing:
+                    st.error(
+                        f"Reference file is missing required column(s): {missing}. "
+                        f"Found columns: {list(ref_df.columns[:10])}"
+                    )
+                else:
+                    ref_df = ref_df[["gene_id", "gene_name"]].dropna()
+                    ref_df = ref_df[~ref_df["gene_name"].duplicated(keep="first")]
+                    ref_mapping = dict(zip(ref_df["gene_name"], "RNA_" + ref_df["gene_id"]))
+                    full_gene_to_ensembl.update(ref_mapping)
+                    st.success(
+                        f"Reference file loaded. {len(ref_mapping):,} gene name mappings available."
+                    )
             except Exception as e:
                 st.error(f"Could not read reference file: {e}")
                 st.info("Ensure the file has gene_id and gene_name columns.")
