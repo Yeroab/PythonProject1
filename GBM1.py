@@ -1294,105 +1294,46 @@ elif page == "User Analysis":
             uploaded_file = st.file_uploader("Upload filled MultiNet CSV Template", type="csv",
                                             help="Upload a CSV file with patient biomarker data")
 
-        # Optional: upload the reference TSV to build a full gene name to Ensembl mapping
-        st.divider()
-        st.write("### Gene Name Reference File (Optional)")
-        st.caption(
-            "If your patient data file uses gene names as column headers (e.g. DDX11L1, TRIM71), "
-            "upload the RNA-seq reference TSV here so the app can convert them to the correct "
-            "Ensembl format (RNA_ENSG...) before analysis. Skip this if your file already uses "
-            "Ensembl IDs or the 100-feature template format."
-        )
-        ref_file = st.file_uploader(
-            "Upload RNA-seq reference TSV (must contain gene_id and gene_name columns)",
-            type=["tsv", "txt", "csv"],
-            help="This is the reference file used to map gene names to Ensembl IDs.",
-            key="ref_tsv_uploader"
-        )
-
-        # Build full gene name to RNA_ENSG mapping from reference file if provided
-        full_gene_to_ensembl = dict(GENE_TO_ENSEMBL)  # start with the 100-feature fallback
-
-        if ref_file is not None:
-            try:
-                sep = "\t" if ref_file.name.endswith((".tsv", ".txt")) else ","
-                # Read full file first to avoid usecols matching issues with BOM/encoding
-                ref_df = pd.read_csv(ref_file, sep=sep, encoding="utf-8-sig", low_memory=False)
-                # Strip whitespace from column names
-                ref_df.columns = ref_df.columns.str.strip()
-                # Use whichever of gene_id / gene_name are present
-                has_gene_id = "gene_id" in ref_df.columns
-                has_gene_name = "gene_name" in ref_df.columns
-
-                if has_gene_id and has_gene_name:
-                    ref_df = ref_df[["gene_id", "gene_name"]].dropna()
-                    ref_df = ref_df[~ref_df["gene_name"].duplicated(keep="first")]
-                    ref_mapping = dict(zip(ref_df["gene_name"], "RNA_" + ref_df["gene_id"]))
-                    full_gene_to_ensembl.update(ref_mapping)
-                    st.success(
-                        f"Reference file loaded. {len(ref_mapping):,} gene name mappings available."
-                    )
-                elif has_gene_id and not has_gene_name:
-                    # No gene_name column - map gene_id to RNA_gene_id only
-                    ref_df = ref_df[["gene_id"]].dropna()
-                    ref_df = ref_df[~ref_df["gene_id"].duplicated(keep="first")]
-                    ref_mapping = dict(zip(ref_df["gene_id"], "RNA_" + ref_df["gene_id"]))
-                    full_gene_to_ensembl.update(ref_mapping)
-                    st.warning(
-                        f"gene_name column not found. Mapped {len(ref_mapping):,} Ensembl IDs "
-                        f"using gene_id only. Gene names will not be recognised."
-                    )
-                elif has_gene_name and not has_gene_id:
-                    # No gene_id column - cannot build RNA_ENSG format, warn user
-                    st.warning(
-                        f"gene_id column not found. Cannot build Ensembl ID mapping without it. "
-                        f"Found columns: {list(ref_df.columns[:10])}. "
-                        f"The app will proceed using only the built-in 100-feature mapping."
-                    )
-                else:
-                    st.warning(
-                        f"Neither gene_id nor gene_name columns were found. "
-                        f"Found columns: {list(ref_df.columns[:10])}. "
-                        f"The app will proceed using only the built-in 100-feature mapping."
-                    )
-            except Exception as e:
-                st.error(f"Could not read reference file: {e}")
-                st.info("Ensure the file has gene_id and gene_name columns.")
-
         # IMPORTANT: Only process and show results AFTER file upload
         if uploaded_file is not None:
             try:
                 raw_df = pd.read_csv(uploaded_file)
                 st.success(f"File uploaded successfully. Found {len(raw_df)} patient(s).")
 
-                # Detect whether columns look like gene names or already Ensembl format
+                # Detect column format from first few non-ID columns
                 sample_cols = [c for c in raw_df.columns if c != "Sample_ID"][:5]
-                is_gene_names = all(
-                    not str(c).startswith("RNA_ENSG") and not str(c).startswith("ENSG")
-                    for c in sample_cols
-                )
+                is_ensembl_prefixed = any(str(c).startswith("RNA_ENSG") for c in sample_cols)
+                is_bare_ensembl = any(str(c).startswith("ENSG") for c in sample_cols)
 
-                if is_gene_names:
-                    # Remap gene names to RNA_ENSG using full mapping
-                    raw_df = raw_df.rename(
-                        columns=lambda col: full_gene_to_ensembl.get(col, col)
-                    )
-                    st.info(
-                        "Gene name columns detected and converted to Ensembl ID format for processing."
-                    )
-                else:
-                    # Already Ensembl format - ensure RNA_ prefix is present
+                if is_ensembl_prefixed:
+                    # Already in correct RNA_ENSG... format, no changes needed
+                    pass
+                elif is_bare_ensembl:
+                    # Bare Ensembl IDs - add RNA_ prefix
                     raw_df = raw_df.rename(
                         columns=lambda col: f"RNA_{col}" if str(col).startswith("ENSG") else col
                     )
+                    st.info("Bare Ensembl ID columns detected. RNA_ prefix added automatically.")
+                else:
+                    # Gene names - remap using built-in 100-feature mapping
+                    # Columns not in the mapping pass through unchanged and are dropped
+                    # later by the imputer reindex step
+                    raw_df = raw_df.rename(
+                        columns=lambda col: GENE_TO_ENSEMBL.get(col, col)
+                    )
+                    matched = sum(1 for c in raw_df.columns if str(c).startswith("RNA_ENSG"))
+                    st.info(
+                        f"Gene name columns detected. {matched} of the 100 model features matched. "
+                        f"Unrecognised columns will be ignored during analysis."
+                    )
 
                 # Warn about unrecognised columns that will be dropped
-                recognised = set(feature_names) | set(full_gene_to_ensembl.values())
+                recognised = set(feature_names) | set(GENE_TO_ENSEMBL.values())
                 extra_cols = [c for c in raw_df.columns if c not in recognised and c != "Sample_ID"]
                 if extra_cols:
                     st.warning(
-                        f"{len(extra_cols)} unrecognised column(s) were found and will be "
-                        f"ignored: {', '.join(extra_cols[:5])}{'...' if len(extra_cols) > 5 else ''}. "
+                        f"{len(extra_cols)} unrecognised column(s) will be ignored: "
+                        f"{', '.join(extra_cols[:5])}{'...' if len(extra_cols) > 5 else ''}. "
                         f"Only the 100 model features are used for analysis."
                     )
 
