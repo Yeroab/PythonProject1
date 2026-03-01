@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pickle
 import io
-from PIL import Image
+from PIL import Image 
 
 # --- Page Configuration ---
 st.set_page_config(page_title="MOmics-ML", layout="wide", page_icon="🧬")
