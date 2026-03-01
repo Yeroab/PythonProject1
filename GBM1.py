@@ -598,10 +598,17 @@ elif page == "Demo Walkthrough":
                 st.info("**Patient 1**\nModerate profile\nMid expression (5–15)")
             with col_info3:
                 st.info("**Patient 2**\nLow-risk profile\nHigh expression (900–1000)")
+        # FIX: Store results in session_state so they persist across reruns.
+        # Previously, demo_results was a local variable inside the if-button block.
+        # When the user clicked the patient selectbox, Streamlit reran the script but
+        # the button was no longer "clicked", so demo_results was never defined and
+        # the entire dashboard disappeared — making the patient selector non-functional.
         if st.button("Analyze Sample Patients", key="analyze_demo_patients", type="primary"):
-            st.markdown("---")
             with st.spinner("Analyzing biomarkers..."):
-                demo_results = process_data(demo_data)
+                st.session_state.demo_try_results = process_data(demo_data)
+
+        if 'demo_try_results' in st.session_state:
+            st.markdown("---")
             st.success("Analysis Complete!")
             st.markdown("""
             <div class="demo-box demo-success">
@@ -609,7 +616,7 @@ elif page == "Demo Walkthrough":
             <p>Below are the results for all 3 sample patients. Explore each patient's profile using the selector.</p>
             </div>
             """, unsafe_allow_html=True)
-            render_dashboard(demo_results, mode="bulk", key_prefix="demo")
+            render_dashboard(st.session_state.demo_try_results, mode="bulk", key_prefix="demo")
             st.divider()
             st.markdown("""
             <div class="demo-box">
@@ -703,12 +710,16 @@ elif page == "Demo Walkthrough":
         exploration_tab = st.tabs(["Sample Analysis", "Learning Resources", "Tips & Tricks"])
         with exploration_tab[0]:
             st.write("### Analyze Sample Patients")
+            # FIX: Same session_state fix as "Try with Sample Patients" — results must
+            # persist across reruns triggered by the patient selectbox interaction.
             if st.button("Load & Analyze Sample Data", key="explore_analyze", type="primary"):
                 with st.spinner("Analyzing sample data..."):
-                    demo_results = process_data(demo_data)
+                    st.session_state.demo_explore_results = process_data(demo_data)
+
+            if 'demo_explore_results' in st.session_state:
                 st.success("Sample data analyzed successfully!")
                 st.divider()
-                render_dashboard(demo_results, mode="bulk", key_prefix="explore")
+                render_dashboard(st.session_state.demo_explore_results, mode="bulk", key_prefix="explore")
         with exploration_tab[1]:
             st.write("### Quick Reference Guide")
             with st.expander("Understanding Risk Scores"):
@@ -721,7 +732,7 @@ elif page == "Demo Walkthrough":
 
     st.divider()
     if st.button("Reset Demo Workspace"):
-        keys_to_clear = [k for k in st.session_state.keys() if 'demo' in k or 'tutorial' in k]
+        keys_to_clear = [k for k in list(st.session_state.keys()) if 'demo' in k or 'tutorial' in k]
         for key in keys_to_clear:
             del st.session_state[key]
         st.rerun()
