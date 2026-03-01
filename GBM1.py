@@ -210,49 +210,31 @@ importance_df_display = importance_df.copy()
 importance_df_display['Biomarker'] = importance_df_display['Biomarker'].apply(to_gene)
 
 # =============================================================================
-# BUG #1 FIX — generate_demo_data
+# DEMO DATA — loaded from DEMO.csv (real GBM patient data)
 # =============================================================================
-# WHAT WAS WRONG:
-#   The original function branched on '_prot'/'PROT' and 'RNA'/'_rna' suffixes
-#   to assign different value ranges to "different" patient profiles.
-#   However, ALL 100 model features are named RNA_ENSG..., so:
-#     - the '_prot'/'PROT' branch  → NEVER executed
-#     - the 'RNA' branch           → executed for EVERY feature (100% of the time)
-#     - the 'else' branch          → NEVER executed
-#   Result: all three patients received nearly identical RNA-range values
-#   and produced the same prediction after scaling.
-#
-# THE FIX:
-#   Remove the dead branching logic entirely. Each patient is now assigned
-#   a distinct, explicit value range applied uniformly across all features,
-#   giving the pipeline genuinely different inputs per patient.
+# DEMO.csv contains 6 real patients with 16,383 gene-symbol columns.
+# The model expects 100 RNA_ENSG Ensembl ID features. Of those 100, 19 gene
+# symbols are present in DEMO.csv and are remapped via GENE_TO_ENSEMBL.
+# The remaining 81 model features are filled with NaN and imputed to their
+# training medians. Patient biomarker charts reflect real expression values
+# for the 19 matched genes; risk scores are based on all 100 features after
+# imputation.
 # =============================================================================
+DEMO_CSV_PATH = 'DEMO.csv'
+
 @st.cache_data
-def generate_demo_data():
-    """Generate sample patient data for demo with distinct value ranges per patient."""
-    np.random.seed(42)
-
-    demo_patients = []
-
-    # Patient 0: Low expression range → High Risk profile
-    patient1 = {}
-    for name in feature_names:
-        patient1[name] = np.random.uniform(0.988, 5)
-    demo_patients.append(patient1)
-
-    # Patient 1: Mid expression range → Moderate profile
-    patient2 = {}
-    for name in feature_names:
-        patient2[name] = np.random.uniform(5, 15)
-    demo_patients.append(patient2)
-
-    # Patient 2: High expression range → Low Risk profile
-    patient3 = {}
-    for name in feature_names:
-        patient3[name] = np.random.uniform(900, 1000)
-    demo_patients.append(patient3)
-
-    return pd.DataFrame(demo_patients)
+def load_demo_data():
+    """Load real patient data from DEMO.csv, remapping gene symbols to Ensembl IDs."""
+    try:
+        df = pd.read_csv(DEMO_CSV_PATH)
+        sample_ids = df['Sample_ID'].tolist() if 'Sample_ID' in df.columns else [f"Patient {i}" for i in range(len(df))]
+        df_data = df.drop(columns=['Sample_ID'], errors='ignore')
+        # Remap the 19 gene symbol columns that match model features → Ensembl IDs
+        df_data = df_data.rename(columns=lambda c: GENE_TO_ENSEMBL.get(c, c))
+        return df_data, sample_ids
+    except FileNotFoundError:
+        st.error(f"Demo data file '{DEMO_CSV_PATH}' not found. Please ensure it is in the root directory.")
+        st.stop()
 
 
 # --- Processing Engine ---
@@ -317,7 +299,7 @@ def render_risk_charts(results, mode="manual", key_prefix=""):
         st.dataframe(risk_list_df, use_container_width=True, hide_index=True)
 
 # --- Complete Dashboard ---
-def render_dashboard(results, mode="manual", key_prefix=""):
+def render_dashboard(results, mode="manual", key_prefix="", patient_labels=None):
     render_risk_charts(results, mode=mode, key_prefix=key_prefix)
     if mode == "bulk":
         st.divider()
@@ -338,7 +320,11 @@ def render_dashboard(results, mode="manual", key_prefix=""):
             st.metric("Median Risk Score", f"{median_risk:.2%}")
     st.divider()
     st.subheader("Individual Patient Analysis")
-    selected_idx = st.selectbox("Select Patient Record", results.index, key=f"{key_prefix}_select")
+    if patient_labels:
+        fmt = lambda i: f"Patient {i} — {patient_labels[i]}" if i < len(patient_labels) else f"Patient {i}"
+    else:
+        fmt = lambda i: f"Patient {i}"
+    selected_idx = st.selectbox("Select Patient Record", results.index, format_func=fmt, key=f"{key_prefix}_select")
     patient_row = results.iloc[selected_idx]
     col_info1, col_info2 = st.columns(2)
     with col_info1:
@@ -563,18 +549,18 @@ elif page == "Demo Walkthrough":
     st.markdown("""
     <div class="demo-box">
     <h3>Welcome to the Demo Workspace</h3>
-    <p>This is your practice environment with <strong>pre-loaded sample data</strong>. Get familiar with MOmics-ML's 
-    functionality using dummy datasets before working with real patient data.</p>
+    <p>This workspace uses <strong>real GBM patient data</strong> from the DEMO dataset. 
+    Explore the full analysis workflow with genuine patient biomarker profiles.</p>
     <p><strong>What's included:</strong></p>
     <ul>
-        <li>Sample Patient Dataset (3 pre-configured patients)</li>
-        <li>Realistic biomarker values</li>
+        <li>6 real GBM patient records (CPTAC dataset)</li>
+        <li>16,383 gene expression measurements per patient</li>
         <li>Full analysis workflow</li>
-        <li>Interactive visualizations</li>
+        <li>Interactive per-patient biomarker visualizations</li>
     </ul>
     </div>
     """, unsafe_allow_html=True)
-    demo_data = generate_demo_data()
+    demo_data, demo_sample_ids = load_demo_data()
     st.divider()
     demo_mode = st.radio("**Choose Demo Mode:**", ["Try with Sample Patients", "Guided Tutorial", "Learn by Exploring"], horizontal=True)
 
@@ -582,22 +568,19 @@ elif page == "Demo Walkthrough":
         st.subheader("Interactive Analysis with Sample Data")
         st.markdown("""
         <div class="demo-box demo-success">
-        <h4>Pre-loaded Sample Dataset Ready</h4>
-        <p>We've prepared 3 sample GBM patients with different risk profiles. 
-        Click "Analyze Sample Patients" to see the complete analysis workflow.</p>
+        <h4>Real Patient Dataset Loaded</h4>
+        <p>6 real GBM patients from the CPTAC dataset are ready for analysis.
+        Click "Analyze Sample Patients" to run the full diagnostic pipeline.</p>
         </div>
         """, unsafe_allow_html=True)
         with st.expander("Preview Sample Patient Data"):
             st.write("**Sample Patients Overview:**")
             preview_df = demo_data.iloc[:, :10]
             st.dataframe(preview_df, use_container_width=True)
-            col_info1, col_info2, col_info3 = st.columns(3)
-            with col_info1:
-                st.info("**Patient 0**\nHigh-risk profile\nLow expression (0.988–5)")
-            with col_info2:
-                st.info("**Patient 1**\nModerate profile\nMid expression (5–15)")
-            with col_info3:
-                st.info("**Patient 2**\nLow-risk profile\nHigh expression (900–1000)")
+            id_cols = st.columns(len(demo_sample_ids))
+            for i, (col, sid) in enumerate(zip(id_cols, demo_sample_ids)):
+                with col:
+                    st.info(f"**Patient {i}**\n{sid}")
         # FIX: Store results in session_state so they persist across reruns.
         # Previously, demo_results was a local variable inside the if-button block.
         # When the user clicked the patient selectbox, Streamlit reran the script but
@@ -613,10 +596,12 @@ elif page == "Demo Walkthrough":
             st.markdown("""
             <div class="demo-box demo-success">
             <h4>Analysis Complete</h4>
-            <p>Below are the results for all 3 sample patients. Explore each patient's profile using the selector.</p>
+            <p>Below are the results for all 6 real GBM patients. Explore each patient's profile using the selector.</p>
+            <p><em>Note: 19 of 100 model features were matched from DEMO.csv gene symbols; the remaining 81 were 
+            imputed from training data medians. Biomarker charts reflect real expression values for the 19 matched genes.</em></p>
             </div>
             """, unsafe_allow_html=True)
-            render_dashboard(st.session_state.demo_try_results, mode="bulk", key_prefix="demo")
+            render_dashboard(st.session_state.demo_try_results, mode="bulk", key_prefix="demo", patient_labels=demo_sample_ids)
             st.divider()
             st.markdown("""
             <div class="demo-box">
@@ -644,7 +629,7 @@ elif page == "Demo Walkthrough":
             <p>Let's start by looking at our pre-loaded sample patients.</p></div>""", unsafe_allow_html=True)
             st.write("**Our Sample Dataset Contains:**")
             st.dataframe(demo_data.iloc[:, :15], use_container_width=True)
-            st.info("**What you see:**\n1. 3 rows = 3 sample patients\n2. Columns = Biomarker measurements\n3. Values = Simulated lab results")
+            st.info("**What you see:**\n1. 6 rows = 6 real GBM patients\n2. Columns = Gene expression measurements\n3. Values = Real RNA-seq read counts")
             if st.button("Next: Run Analysis", key="tutorial_next_0"):
                 st.session_state.tutorial_step = 1
                 st.rerun()
@@ -670,7 +655,7 @@ elif page == "Demo Walkthrough":
             st.markdown("""<div class="demo-box"><h3>Step 4: Individual Patient Analysis</h3>
             <p>Let's examine one patient in detail:</p></div>""", unsafe_allow_html=True)
             if 'demo_results' in st.session_state:
-                selected = st.selectbox("Choose a patient:", [0, 1, 2], key="tutorial_patient_select")
+                selected = st.selectbox("Choose a patient:", range(len(demo_sample_ids)), format_func=lambda i: f"Patient {i} — {demo_sample_ids[i]}", key="tutorial_patient_select")
                 patient_row = st.session_state.demo_results.iloc[selected]
                 col1, col2 = st.columns(2)
                 with col1:
@@ -706,7 +691,7 @@ elif page == "Demo Walkthrough":
     elif demo_mode == "Learn by Exploring":
         st.subheader("Free Exploration Mode")
         st.markdown("""<div class="demo-box"><h4>Explore at Your Own Pace</h4>
-        <p>The complete interface is available below with pre-loaded sample data.</p></div>""", unsafe_allow_html=True)
+        <p>The complete interface is available below with real GBM patient data from the CPTAC dataset.</p></div>""", unsafe_allow_html=True)
         exploration_tab = st.tabs(["Sample Analysis", "Learning Resources", "Tips & Tricks"])
         with exploration_tab[0]:
             st.write("### Analyze Sample Patients")
@@ -719,7 +704,7 @@ elif page == "Demo Walkthrough":
             if 'demo_explore_results' in st.session_state:
                 st.success("Sample data analyzed successfully!")
                 st.divider()
-                render_dashboard(st.session_state.demo_explore_results, mode="bulk", key_prefix="explore")
+                render_dashboard(st.session_state.demo_explore_results, mode="bulk", key_prefix="explore", patient_labels=demo_sample_ids)
         with exploration_tab[1]:
             st.write("### Quick Reference Guide")
             with st.expander("Understanding Risk Scores"):
