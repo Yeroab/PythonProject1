@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 import pickle
 import io
 from PIL import Image
-from docs import OVERVIEW, GUI_GUIDE, MODEL_ARCH, INPUT_FORMAT, RESULTS
+from docs import OVERVIEW, GUI_GUIDE, MODEL_ARCH
 
 # --- Page Configuration ---
 st.set_page_config(page_title="MOmics-ML", layout="wide", page_icon="🧬")
@@ -419,27 +419,17 @@ if page == "Home":
 # ============================================================================
 elif page == "Documentation":
     st.header("System Documentation")
-    doc_tabs = st.tabs([
-        "Overview",
-        "GUI User Guide",
-        "Model Architecture",
-        "Input Data Format",
-        "Interpreting Results"
-    ])
+    doc_tabs = st.tabs(["Overview", "GUI User Guide", "Model Architecture"])
     with doc_tabs[0]:
         st.markdown(OVERVIEW)
     with doc_tabs[1]:
         st.markdown(GUI_GUIDE)
     with doc_tabs[2]:
         st.markdown(MODEL_ARCH)
-    with doc_tabs[3]:
-        st.markdown(INPUT_FORMAT)
-    with doc_tabs[4]:
-        st.markdown(RESULTS)
 
 elif page == "User Analysis":
     st.header("User Analysis")
-    analysis_tabs = st.tabs(["Manual Patient Entry", "Bulk Data Upload"])
+    analysis_tabs = st.tabs(["Manual Patient Entry", "Bulk Data Upload", "Example Analysis"])
     with analysis_tabs[0]:
         st.subheader("Manual Patient Entry")
         st.info("Input raw laboratory values. Markers left at 0.0 will be treated as baseline. Click 'Analyze Single Patient' to see results.")
@@ -503,6 +493,79 @@ elif page == "User Analysis":
             except Exception as e:
                 st.error(f"Error processing file: {e}")
                 st.info("Please ensure your CSV file follows the template format.")
+
+    # ── EXAMPLE ANALYSIS TAB ─────────────────────────────────────────────────
+    with analysis_tabs[2]:
+        st.subheader("Example Analysis")
+        st.write("""
+        This tab runs a real analysis on a CPTAC GBM patient sample processed from
+        GDC RNA-seq data. The input file (`momics_input.csv`) contains raw STAR
+        unstranded counts for all 100 model features, prepared from a single
+        10x Visium-compatible CPTAC-3 sample.
+
+        Click **Run Example Analysis** to see the full results dashboard.
+        """)
+
+        col_ex1, col_ex2 = st.columns([1, 2])
+        with col_ex1:
+            st.markdown("**Input file:** `momics_input.csv`")
+            st.markdown("**Sample:** CPTAC-3 GBM patient")
+            st.markdown("**Features:** 100 RNA model features")
+            st.markdown("**Format:** Raw unstranded STAR counts")
+
+            if st.button("Run Example Analysis", type="primary", key="btn_example"):
+                try:
+                    example_df = pd.read_csv("2momics_input.csv")
+                    st.session_state.example_results = process_data(example_df)
+                    st.session_state.example_ran = True
+                except FileNotFoundError:
+                    st.error(
+                        "`momics_input.csv` not found. Ensure the file is in the "
+                        "repo root alongside the main app file."
+                    )
+                except Exception as e:
+                    st.error(f"Error running example: {e}")
+
+            if st.session_state.get("example_ran"):
+                if st.button("Clear Results", key="btn_example_clear"):
+                    st.session_state.pop("example_results", None)
+                    st.session_state.pop("example_ran", None)
+                    st.rerun()
+
+        with col_ex2:
+            with st.expander("Preview: what's in momics_input.csv?"):
+                try:
+                    preview_df = pd.read_csv("momics_input.csv")
+                    # Show just the 7 key feature columns
+                    key_features = [
+                        "RNA_ENSG00000244040.4",  # LINC02084
+                        "RNA_ENSG00000164061.4",  # BTF3L4
+                        "RNA_ENSG00000206814.1",  # RNU6-1
+                        "RNA_ENSG00000181215.11", # MS4A6E
+                        "RNA_ENSG00000157445.13", # CACNA2D3
+                        "RNA_ENSG00000233487.6",  # LINC01605
+                        "RNA_ENSG00000242759.5",  # LINC01116
+                    ]
+                    present = [f for f in key_features if f in preview_df.columns]
+                    if present:
+                        display_df = preview_df[present].copy()
+                        display_df.columns = [
+                            f"{to_gene(c)} ({c})" for c in display_df.columns
+                        ]
+                        st.markdown("**7 key model features (all 100 present in file):**")
+                        st.dataframe(display_df.T.rename(columns={0: "Raw Count"}),
+                                     use_container_width=True)
+                except FileNotFoundError:
+                    st.info("`momics_input.csv` will appear here once added to the repo.")
+
+        if st.session_state.get("example_ran") and "example_results" in st.session_state:
+            st.divider()
+            st.subheader("Example Results")
+            render_dashboard(
+                st.session_state.example_results,
+                mode="bulk",
+                key_prefix="ex"
+            )
 
 # ============================================================================
 # DEMO WALKTHROUGH PAGE
